@@ -79,7 +79,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 /* ==== LEFT PANEL ==== */
 #panel{
-  position:fixed;left:0;top:54px;bottom:112px;width:258px;
+  position:fixed;left:0;top:54px;bottom:40px;width:258px;
   z-index:400;background:rgba(5,10,20,.94);
   border-right:1px solid rgba(0,180,220,.18);
   backdrop-filter:blur(16px);
@@ -140,7 +140,375 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 /* ==== DETAIL PANEL ==== */
 #dp{
-  position:fixed;right:0;top:54px;bottom:112px;width:272px;
+  position:fixed;right:0;top:54px;bottom:40px;width:272px;
+  z-index:400;background:rgba(5,10,20,.94);
+  border-left:1px solid rgba(0,180,220,.18);
+  backdrop-filter:blur(16px);
+  transform:translateX(272px);transition:transform .3s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto
+}
+#dp.open{transform:translateX(0)}
+.dh{padding:13px 14px 10px;border-bottom:1px solid rgba(0,180,220,.12);display:flex;justify-content:space-between;align-items:flex-start}
+.dn{font-family:'Bebas Neue',cursive;font-size:19px;letter-spacing:.05em;color:#fff;line-height:1}
+.dt{font-family:'DM Mono',monospace;font-size:8.5px;margin-top:3px;letter-spacing:.12em}
+.dc{background:none;border:none;color:rgba(180,210,225,.5);cursor:pointer;font-size:16px}
+.dc:hover{color:#00d4ff}
+.db{padding:11px 14px;display:flex;flex-direction:column;gap:8px}
+.df{display:flex;justify-content:space-between;align-items:center;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,.04)}
+.df:last-child{border-bottom:none}
+.fl{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:rgba(180,210,225,.45)}
+.fv{font-family:'DM Mono',monospace;font-size:10px;color:#c8dde8;text-align:right}
+.fvh{color:#00d4ff;font-weight:500}
+.rb{padding:9px;background:rgba(0,212,255,.03);border:1px solid rgba(0,180,220,.18);border-radius:6px}
+.rl2{display:flex;align-items:center;gap:5px}
+.rp{font-family:'DM Mono',monospace;font-size:9px;color:#c8dde8}
+.rarr{flex:1;height:1px;background:linear-gradient(90deg,rgba(0,212,255,.45),transparent 50%,rgba(0,212,255,.45));position:relative}
+.rarr::after{content:'→';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:8px;color:rgba(0,212,255,.45);background:rgba(5,10,20,.94);padding:0 2px}
+.cbdg{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-size:9px}
+
+/* ==== MAP ZOOM CONTROLS ==== */
+#zoom-ctrl{
+  position:fixed;right:14px;bottom:126px;z-index:450;
+  display:flex;flex-direction:column;gap:4px
+}
+.zb{
+  width:32px;height:32px;background:rgba(4,8,18,.92);
+  border:1px solid rgba(0,180,220,.25);border-radius:6px;
+  color:#00d4ff;font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s
+}
+.zb:hover{background:rgba(0,212,255,.15)}
+
+
+
+/* ==== LOADER ==== */
+#ldr{
+  position:fixed;inset:0;z-index:9999;background:#06111e;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  transition:opacity .7s ease
+}
+#ldr.fade{opacity:0;pointer-events:none}
+.ll{font-family:'Bebas Neue',cursive;font-size:52px;letter-spacing:.15em;color:#00d4ff;text-shadow:0 0 40px rgba(0,212,255,.65);animation:flk 2s ease-in-out infinite}
+@keyframes flk{0%,100%{text-shadow:0 0 40px rgba(0,212,255,.65)}50%{text-shadow:0 0 65px rgba(0,212,255,.95)}}
+.ls{font-family:'DM Mono',monospace;font-size:11px;color:rgba(180,210,225,.5);letter-spacing:.4em}
+.lbar{width:220px;height:2px;background:rgba(0,212,255,.1);border-radius:1px;overflow:hidden}
+.lfill{height:100%;background:linear-gradient(90deg,transparent,#00d4ff,transparent);animation:lsw 1.5s ease-in-out infinite}
+@keyframes lsw{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+#lmsg{font-family:'DM Mono',monospace;font-size:9px;color:rgba(0,212,255,.4);letter-spacing:.28em}
+
+/* ==== MODAL ==== */
+#mov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;backdrop-filter:blur(4px);display:none}
+#mbox{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:601;background:rgba(5,10,20,.96);border:1px solid rgba(0,210,255,.45);border-radius:11px;padding:22px 26px;max-width:400px;width:90%;backdrop-filter:blur(20px);display:none}
+#mbox h3{font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:.1em;color:#00d4ff;margin-bottom:9px}
+#mbox p{font-size:12px;color:#c8dde8;line-height:1.7;margin-bottom:7px}
+.mr{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.mla{padding:5px 12px;background:rgba(0,212,255,.09);border:1px solid rgba(0,210,255,.45);border-radius:6px;color:#00d4ff;font-family:'DM Mono',monospace;font-size:9px;text-decoration:none}
+.mla:hover{background:rgba(0,212,255,.18)}
+.mcl{display:block;width:100%;margin-top:9px;padding:6px;background:transparent;border:1px solid rgba(0,180,220,.2);border-radius:6px;color:rgba(180,210,225,.5);font-family:'DM Mono',monospace;font-size:9px;cursor:pointer}
+.mcl:hover{color:#c8dde8;border-color:rgba(0,210,255,.45)}
+
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:rgba(0,180,220,.2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="ldr">
+  <div class="ll">OCEANUS</div>
+  <div class="ls">Maritime Intelligence</div>
+  <div class="lbar"><div class="lfill"></div></div>
+  <div id="lmsg">LOADING MAP…</div>
+</div>
+
+<!-- ALERTS MODAL -->
+<div id="alrt-ov" onclick="closeAlerts()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;backdrop-filter:blur(4px)"></div>
+<div id="alrt-box" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:601;background:rgba(4,8,18,.97);border:1px solid rgba(255,69,96,.4);border-radius:11px;padding:20px 22px;max-width:480px;width:92%;max-height:75vh;overflow-y:auto;backdrop-filter:blur(20px)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div>
+      <span style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:.1em;color:#ff4560">⚠ ACTIVE ALERTS</span>
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(180,210,225,.35);margin-top:2px">NGA MSI Broadcast Warnings · Last 48 hours</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="alertsFetched=false;fetchAlerts().then(a=>renderAlertList(a||ALERTS))" style="background:none;border:1px solid rgba(0,180,220,.25);border-radius:4px;color:#00d4ff;cursor:pointer;font-family:'DM Mono',monospace;font-size:8px;padding:3px 8px">↻ Refresh</button>
+      <button onclick="closeAlerts()" style="background:none;border:none;color:rgba(180,210,225,.5);cursor:pointer;font-size:18px">✕</button>
+    </div>
+  </div>
+  <div id="alrt-list"></div>
+</div>
+
+<div id="mov" onclick="closeModal()"></div>
+<div id="mbox">
+  <h3>OCEANUS</h3>
+  <p style="font-size:11px;color:rgba(180,210,225,.5);margin-top:-5px;margin-bottom:12px;font-family:'DM Mono',monospace;letter-spacing:.08em">Maritime Intelligence Dashboard</p>
+  <p><strong style="color:#00d4ff">Live AIS</strong> — Real vessel positions streamed from <a href="https://aisstream.io" target="_blank" style="color:#00d4ff">aisstream.io</a> via GitHub Actions, refreshed every 5 minutes. Click any vessel for name, speed, heading, destination and type.</p>
+  <p><strong style="color:#f0a500">Alerts</strong> — Active maritime safety warnings sourced from the <a href="https://msi.nga.mil/NavWarnings" target="_blank" style="color:#00d4ff">NGA MSI Broadcast Warning</a> system (last 48h). Orange triangles on the map mark alert locations.</p>
+  <p><strong style="color:#00e5a0">Shipping Lanes</strong> — Major global trade routes across all ocean basins. Toggle in the Overlays panel.</p>
+  <p style="font-size:10px;color:rgba(180,210,225,.4)">AIS data via <a href="https://aisstream.io" target="_blank" style="color:#00d4ff">aisstream.io</a> · Alerts via <a href="https://msi.nga.mil" target="_blank" style="color:#00d4ff">NGA MSI</a> · Map tiles © <a href="https://carto.com" target="_blank" style="color:#00d4ff">CARTO</a></p>
+  <button class="mcl" onclick="closeModal()">✕ Close</button>
+</div>
+
+<!-- MAP — self-contained tile map engine -->
+<div id="map">
+  <canvas id="map-canvas"></canvas>
+  <div id="marker-layer"></div>
+</div>
+
+<div id="hdr">
+  <div style="display:flex;align-items:baseline">
+    <span class="lw">OCEANUS</span><span class="ls">Maritime Intel</span>
+  </div>
+  <div class="sr">
+    <div class="si"><span class="sv" id="sv-ais" style="color:#00e5a0">—</span><span class="sl">AIS Stream</span></div>
+    <div class="si"><span class="sv" id="sv-vf" style="color:#00d4ff">—</span><span class="sl">VesselFinder</span></div>
+    <div class="si" onclick="openAlerts()" style="cursor:pointer;user-select:none" title="View active alerts"><span class="sv" id="sv-alrt" style="color:#ff4560">—</span><span class="sl" style="color:#ff4560">⚠ Alerts</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="lp"><div class="ld"></div><span id="llbl">LIVE</span></div>
+    <div id="clk">—</div>
+  </div>
+</div>
+
+<div id="sb">
+  <div id="sbrow">
+    <input id="sbin" type="text" placeholder="Search vessel or place…" autocomplete="off">
+    <button id="sbgo" onclick="doSearch()">⌕</button>
+  </div>
+  <div id="sbdrop"></div>
+</div>
+
+<div id="panel">
+
+    
+  <!-- ── AIS Data ──────────────────────────────────── -->
+  <div class="ps">
+    <div class="pt">⚡ AIS Data</div>
+    <div id="ais-status" style="font-family:'DM Mono',monospace;font-size:8.5px;padding:4px 0 4px;color:rgba(180,210,225,.4);min-height:14px">Loading…</div>
+    <div style="display:flex;gap:5px;margin-top:4px">
+      <button class="lb" style="flex:1;margin:0;text-align:center" onclick="connectAISBackend()">↻ Refresh</button>
+      <button class="lb" style="flex:1;margin:0;text-align:center" onclick="stopAISPolling()">✕ Clear</button>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:7.5px;color:rgba(180,210,225,.25);margin-top:7px;line-height:1.7">
+      GitHub Actions updates every 2 min
+    </div>
+  </div>
+
+  <!-- ── Region Navigation ────────────────────────── -->
+  <div class="ps">
+    <div class="pt">🗺 Navigate to Region</div>
+    <select id="vf-area" class="rs" onchange="flyRegion(this.value)">
+      <option value="">— Select region to fly to —</option>
+      <optgroup label="Major Straits &amp; Chokepoints">
+        <option value="hormuz">⚓ Strait of Hormuz</option>
+        <option value="malacca">🌏 Strait of Malacca</option>
+        <option value="suez">🗺 Suez Canal</option>
+        <option value="dover">🌊 Dover Strait</option>
+        <option value="bab">⚓ Bab-el-Mandeb</option>
+        <option value="gibraltar">🌊 Strait of Gibraltar</option>
+        <option value="bosphorus">🌊 Bosphorus</option>
+        <option value="panama">⚓ Panama Canal</option>
+      </optgroup>
+      <optgroup label="Ocean Regions">
+        <option value="world">🌍 Global</option>
+        <option value="natl">🌊 North Atlantic</option>
+        <option value="satl">🌊 South Atlantic</option>
+        <option value="pac">🌊 North Pacific</option>
+        <option value="spac">🌊 South Pacific</option>
+        <option value="indian">🌊 Indian Ocean</option>
+        <option value="med">🌊 Mediterranean</option>
+        <option value="scs">🌊 South China Sea</option>
+        <option value="persian">⚓ Persian Gulf</option>
+        <option value="arctic">❄ Arctic / North Sea</option>
+        <option value="carib">🌊 Caribbean</option>
+      </optgroup>
+    </select>
+  </div>
+
+  <!-- ── Filters ────────────────────────────────────── -->
+  <div class="ps">
+    <div class="pt">Vessel Type Filter</div>
+    <div class="tl" id="type-list"></div>
+  </div>
+  <div class="ps">
+    <div class="pt">Basemap</div>
+    <button class="lb on" id="tile-dark"      onclick="setTileStyle('dark')">🌑 Dark</button>
+    <button class="lb"    id="tile-satellite" onclick="setTileStyle('satellite')">🛰 Satellite</button>
+    <button class="lb"    id="tile-voyager"   onclick="setTileStyle('voyager')">🗺 Voyager</button>
+  </div>
+  <div class="ps">
+    <div class="pt">Overlays</div>
+    <div class="tl">
+      <div class="tr on" id="ov-l" onclick="togOv('lanes',this)"><span>📍 Shipping Lanes</span><div class="tsw"></div></div>
+      <div class="tr" id="ov-wind" onclick="togOv('wind',this)"><span>💨 Wind</span><div class="tsw"></div></div>
+      <div class="tr" id="ov-clouds" onclick="togOv('clouds',this)"><span>☁ Clouds</span><div class="tsw"></div></div>
+      <div class="tr" id="ov-precip" onclick="togOv('precip',this)"><span>🌧 Precipitation</span><div class="tsw"></div></div>
+      <div class="tr" id="ov-temp" onclick="togOv('temp',this)"><span>🌡 Sea Temp</span><div class="tsw"></div></div>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:7.5px;color:rgba(180,210,225,.25);margin-top:6px;line-height:1.6">
+      Weather © <a href="https://openweathermap.org" target="_blank" style="color:rgba(0,212,255,.5);text-decoration:none">OpenWeatherMap</a>
+    </div>
+  </div>
+  <div class="ps">
+    <button class="lb" onclick="openModal()">ℹ About OCEANUS</button>
+    <div id="cursor-coords" style="font-family:'DM Mono',monospace;font-size:9px;color:#00d4ff;padding:5px 2px 2px;letter-spacing:.05em;min-height:18px;opacity:0.75">—</div>
+  </div>
+</div>
+<button id="ptog" onclick="togPanel()">◀</button>
+
+<div id="dp">
+  <div class="dh"><div><div class="dn" id="dp-n">—</div><div class="dt" id="dp-t">—</div></div><button class="dc" onclick="deselect()">✕</button></div>
+  <div class="db" id="dp-b"></div>
+</div>
+
+<div id="zoom-ctrl">
+  <button class="zb" onclick="MAP.zoom(1)">+</button>
+  <button class="zb" onclick="MAP.zoom(-1)" style="font-size:24px;padding-bottom:2px">−</button>
+</div>
+
+
+YPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>OCEANUS — Maritime Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde8;font-family:'DM Sans',sans-serif}
+
+/* ==== LIVE AIS vessel markers ==== */
+.live-vessel { cursor:pointer; }
+@keyframes live-pulse {
+  0%   { opacity:1;   transform:scale(1); }
+  50%  { opacity:0.6; transform:scale(1.3); }
+  100% { opacity:1;   transform:scale(1); }
+}
+
+/* ==== MAP fills the whole screen ==== */
+#map{
+  position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;
+  background:#06111e;overflow:hidden;cursor:grab;
+}
+#map:active{cursor:grabbing}
+#map-canvas{position:absolute;top:0;left:0;display:block}
+#marker-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+
+/* ==== HEADER ==== */
+#hdr{
+  position:fixed;top:0;left:0;right:0;height:54px;z-index:500;
+  background:rgba(4,8,18,.95);border-bottom:1px solid rgba(0,180,220,.2);
+  backdrop-filter:blur(14px);display:flex;align-items:center;
+  justify-content:space-between;padding:0 16px;gap:12px
+}
+.lw{font-family:'Bebas Neue',cursive;font-size:25px;letter-spacing:.12em;color:#00d4ff;text-shadow:0 0 20px rgba(0,212,255,.55);white-space:nowrap}
+.ls{font-family:'DM Mono',monospace;font-size:8.5px;color:rgba(180,210,225,.45);letter-spacing:.22em;text-transform:uppercase;margin-left:7px}
+.sr{display:flex;gap:18px;align-items:center}
+.si{display:flex;flex-direction:column;align-items:center}
+.sv{font-family:'DM Mono',monospace;font-size:15px;color:#00d4ff}
+.sl{font-size:7px;letter-spacing:.18em;text-transform:uppercase;color:rgba(180,210,225,.45)}
+.lp{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:9.5px;color:#00e5a0}
+.ld{width:7px;height:7px;border-radius:50%;background:#00e5a0;box-shadow:0 0 7px #00e5a0;animation:blink 1.6s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+#clk{font-family:'DM Mono',monospace;font-size:10px;color:rgba(180,210,225,.45);white-space:nowrap}
+
+/* ==== SEARCH ==== */
+#sb{
+  position:fixed;top:62px;left:50%;transform:translateX(-50%);
+  z-index:450;width:min(370px,92vw)
+}
+#sbrow{display:flex}
+#sbin{
+  flex:1;padding:8px 12px;background:rgba(4,8,18,.94);
+  border:1px solid rgba(0,180,220,.22);border-right:none;
+  border-radius:7px 0 0 7px;color:#c8dde8;
+  font-family:'DM Mono',monospace;font-size:11px;outline:none
+}
+#sbin::placeholder{color:rgba(180,210,225,.4)}
+#sbin:focus{border-color:rgba(0,210,255,.5)}
+#sbgo{
+  padding:8px 12px;background:rgba(0,212,255,.1);
+  border:1px solid rgba(0,180,220,.22);border-radius:0 7px 7px 0;
+  color:#00d4ff;cursor:pointer;font-size:15px
+}
+#sbgo:hover{background:rgba(0,212,255,.22)}
+#sbdrop{
+  display:none;background:rgba(4,8,18,.97);
+  border:1px solid rgba(0,180,220,.22);border-top:none;
+  border-radius:0 0 7px 7px;max-height:190px;overflow-y:auto
+}
+.sdr{
+  padding:8px 12px;cursor:pointer;font-family:'DM Mono',monospace;
+  font-size:10px;color:#c8dde8;border-bottom:1px solid rgba(0,180,220,.07);
+  display:flex;align-items:center;gap:8px
+}
+.sdr:hover{background:rgba(0,212,255,.08);color:#00d4ff}
+
+/* ==== LEFT PANEL ==== */
+#panel{
+  position:fixed;left:0;top:54px;bottom:40px;width:258px;
+  z-index:400;background:rgba(5,10,20,.94);
+  border-right:1px solid rgba(0,180,220,.18);
+  backdrop-filter:blur(16px);
+  display:flex;flex-direction:column;overflow-y:auto;
+  transform:translateX(0);transition:transform .3s cubic-bezier(.4,0,.2,1)
+}
+#panel.hidden{transform:translateX(-258px)}
+#ptog{
+  position:fixed;left:258px;top:50%;transform:translateY(-50%);
+  z-index:401;width:18px;height:46px;
+  background:rgba(5,10,20,.94);border:1px solid rgba(0,180,220,.18);
+  border-left:none;border-radius:0 6px 6px 0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:rgba(0,212,255,.5);font-size:9px;
+  transition:left .3s cubic-bezier(.4,0,.2,1)
+}
+#ptog.c{left:0}
+.ps{padding:12px 14px 10px;border-bottom:1px solid rgba(0,180,220,.12);flex-shrink:0}
+.ps:last-child{border-bottom:none}
+.pt{font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:.3em;text-transform:uppercase;color:rgba(180,210,225,.45);margin-bottom:9px}
+.cg{display:flex;flex-direction:column;gap:4px}
+.cb{
+  display:flex;align-items:center;gap:8px;padding:6px 9px;
+  background:rgba(255,255,255,.022);border:1px solid rgba(0,180,220,.15);
+  border-radius:6px;cursor:pointer;width:100%;text-align:left;
+  color:rgba(180,210,225,.5);font-size:10.5px;
+  position:relative;overflow:hidden;transition:all .15s
+}
+.cb::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac);opacity:0}
+.cb.on{background:rgba(255,255,255,.055);border-color:var(--ac);color:#fff}
+.cb.on::before{opacity:1}
+.ci{font-size:13px;flex-shrink:0}
+.cnw{flex:1}
+.cn{font-size:10px;font-weight:500;line-height:1;margin-bottom:1px}
+.cc{font-family:'DM Mono',monospace;font-size:7.5px;opacity:.65}
+.cd{width:6px;height:6px;border-radius:50%;flex-shrink:0;opacity:.4}
+.cb.on .cd{opacity:1}
+.tl{display:flex;flex-direction:column;gap:2px}
+.tr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:4px 7px;cursor:pointer;border-radius:4px;
+  font-size:10px;color:rgba(180,210,225,.5);transition:background .15s
+}
+.tr:hover{background:rgba(255,255,255,.03)}
+.tr.on{color:#c8dde8}
+.tsw{width:26px;height:14px;background:rgba(255,255,255,.07);border-radius:7px;position:relative;flex-shrink:0}
+.tsw::after{content:'';position:absolute;top:1.5px;left:1.5px;width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.25);transition:transform .15s}
+.tr.on .tsw{background:#00d4ff}
+.tr.on .tsw::after{transform:translateX(12px);background:#fff}
+.rs{width:100%;padding:6px 9px;background:rgba(255,255,255,.03);border:1px solid rgba(0,180,220,.18);border-radius:6px;color:#c8dde8;font-family:'DM Mono',monospace;font-size:10px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%2300d4ff' stroke-width='1.3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.rs option{background:#0b1120}
+.rng{width:100%;appearance:none;height:3px;background:rgba(0,212,255,.15);border-radius:2px;outline:none;margin-bottom:4px}
+.rng::-webkit-slider-thumb{appearance:none;width:12px;height:12px;border-radius:50%;background:#00d4ff;cursor:pointer;box-shadow:0 0 5px #00d4ff}
+.rl{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:7.5px;color:rgba(180,210,225,.45)}
+.lb{display:block;padding:6px 9px;margin-bottom:4px;background:rgba(255,255,255,.022);border:1px solid rgba(0,180,220,.18);border-radius:6px;color:rgba(180,210,225,.5);font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;width:100%;text-align:left;transition:all .15s}
+.lb:last-child{margin-bottom:0}
+.lb:hover,.lb.on{color:#00d4ff;border-color:rgba(0,210,255,.5);background:rgba(0,212,255,.05)}
+
+/* ==== DETAIL PANEL ==== */
+#dp{
+  position:fixed;right:0;top:54px;bottom:40px;width:272px;
   z-index:400;background:rgba(5,10,20,.94);
   border-left:1px solid rgba(0,180,220,.18);
   backdrop-filter:blur(16px);
@@ -388,7 +756,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
   </div>
   <div class="ps">
     <button class="lb" onclick="openModal()">ℹ About OCEANUS</button>
-    <div id="cursor-coords" style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(180,210,225,.3);padding:4px 2px;letter-spacing:.04em;min-height:16px">—</div>
+    <div id="cursor-coords" style="font-family:'DM Mono',monospace;font-size:9px;color:#00d4ff;padding:5px 2px 2px;letter-spacing:.05em;min-height:18px;opacity:0.75">—</div>
   </div>
 </div>
 <button id="ptog" onclick="togPanel()">◀</button>
@@ -403,27 +771,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
   <button class="zb" onclick="MAP.zoom(-1)" style="font-size:24px;padding-bottom:2px">−</button>
 </div>
 
-<div id="tbar">
-  <div class="tt">
-    <span class="tll">〰 HISTORY</span>
-    <div class="tbs">
-      <button class="tbtn" onclick="jmpT(-7)">◀ −7d</button>
-      <button class="tbtn" onclick="jmpT(-3)">−3d</button>
-      <button class="tbtn" onclick="jmpT(-1)">−1d</button>
-      <button class="tbtn on" id="btn-now" onclick="jmpT(0)">● NOW</button>
-    </div>
-    <div class="tc" id="tc"><span class="tnow">● LIVE</span></div>
-    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-      <div id="next-refresh" style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(180,210,225,.3)"></div>
-    </div>
-  </div>
-  <div class="ttr">
-    <div class="tbg" style="background:linear-gradient(90deg,rgba(240,165,0,.3) 0%,rgba(240,165,0,.3) 86%,rgba(0,229,160,.9) 86%,rgba(0,229,160,.9) 100%)"></div>
-    <div class="tnl" style="left:86%;transform:translate(-50%,-50%)"></div>
-    <div class="ttks" id="ttks"></div>
-    <input type="range" id="trange" min="-7" max="0" value="0" step="0.05" oninput="onSlide(this.value)">
-  </div>
-</div>
 
 <div id="bbar">
   <span class="tklbl">▶ AIS</span>
@@ -625,7 +972,13 @@ const MAP = (() => {
       const mx=e.clientX-rect.left, my=e.clientY-rect.top;
       const onAlert  = typeof hitTestAlert  === 'function' && hitTestAlert(mx,my,project)  >= 0;
       const onVessel = typeof hitTestVessel === 'function' && hitTestVessel(mx,my,project) != null;
-      el.style.cursor = (onAlert || onVessel) ? 'pointer' : '';
+      const onLane   = typeof hitTestLane   === 'function' && hitTestLane(mx,my,project)   != null;
+      el.style.cursor = (onAlert || onVessel || onLane) ? 'pointer' : '';
+      if (onLane && !dragging) {
+        showLaneTooltip(hitTestLane(mx,my,project), e.clientX, e.clientY);
+      } else if (!onLane) {
+        hideLaneTooltip();
+      }
       // Update lat/lon display
       const ll = unproject(mx, my);
       const coordEl = document.getElementById('cursor-coords');
@@ -723,7 +1076,10 @@ const MAP = (() => {
       const d=Math.hypot(mx-x,my-y);
       if(d<best){best=d;hit=m;}
     }
-    if(hit) hit.onClick(); else onMapClick();
+    // Check shipping lanes
+    const hitLane = typeof hitTestLane === 'function' ? hitTestLane(mx, my, project) : null;
+    if (hitLane) { showLaneTooltip(hitLane, e.clientX, e.clientY); return; }
+    if(hit) hit.onClick(); else { hideLaneTooltip(); onMapClick(); }
   });
 
   // ── Polylines ─────────────────────────────────────────────────
@@ -758,6 +1114,7 @@ const MAP = (() => {
   return {
     project, unproject, render,
     addPolyline, clearPolylines,
+    get currentZoom(){ return zoom; },
     addMarker, removeMarker, clearMarkers,
     setView(la,ln,z){
       lat=Math.max(-85,Math.min(85,la));
@@ -977,6 +1334,25 @@ function flyToAlert(i) {
 let showT = true, showL = true;
 
 // Major shipping lanes — routes verified to stay in open water
+const LANE_NAMES = [
+  'North Atlantic — Europe to US East Coast',
+  'North Atlantic — Europe to Caribbean',
+  'South Atlantic — Europe to South America',
+  'Mediterranean — Europe to Suez Canal',
+  'Red Sea — Suez to Indian Ocean',
+  'Indian Ocean — Suez to Malacca Strait',
+  'South China Sea — Malacca to Japan',
+  'Malacca to Australia',
+  'Trans-Pacific — Japan to US West Coast (W)',
+  'Trans-Pacific — Japan to US West Coast (E)',
+  'Trans-Pacific — Australia to US West Coast (W)',
+  'Trans-Pacific — Australia to US West Coast (E)',
+  'Cape Horn — South America East Coast',
+  'Cape of Good Hope — Europe to Asia',
+  'North Sea / Baltic Feeder',
+  'Strait of Gibraltar',
+  'Persian Gulf to Indian Ocean',
+];
 const LANE_PTS = [
   // North Atlantic: Europe → US East Coast (via open Atlantic, avoiding Iceland)
   [[51.5,1.5],[48,-5],[44,-15],[40,-30],[36,-45],[32,-55],[36,-68],[40.7,-74]],
@@ -994,10 +1370,14 @@ const LANE_PTS = [
   [[2.5,101],[4,104],[8,108],[15,114],[22,118],[30,124],[35,137],[35,140]],
   // Malacca Strait → Australia
   [[2.5,101],[-2,107],[-8,115],[-20,118],[-31,115],[-32,116]],
-  // Trans-Pacific: Japan → US West Coast
-  [[35,140],[38,155],[42,170],[45,-175],[42,-160],[37,-122]],
-  // Trans-Pacific: Australia → US West Coast
-  [[-33.9,151],[-20,162],[-5,175],[5,-175],[15,-145],[20,-130],[33.7,-118]],
+  // Trans-Pacific: Japan → US West Coast (western half, stays west of antimeridian)
+  [[35,140],[38,150],[42,165],[44,175],[44,180]],
+  // Trans-Pacific: Japan → US West Coast (eastern half, continues from antimeridian)
+  [[44,-180],[44,-170],[43,-158],[40,-140],[37,-122]],
+  // Trans-Pacific: Australia → US West Coast (western half)
+  [[-33.9,151],[-22,160],[-8,170],[0,178],[3,180]],
+  // Trans-Pacific: Australia → US West Coast (eastern half)
+  [[3,-180],[5,-175],[12,-160],[18,-145],[24,-133],[33.7,-118]],
   // Cape Horn route: Europe → South America east coast
   [[51.5,1.5],[44,-15],[35,-25],[20,-35],[-5,-35],[-20,-40],[-34,-52],[-40,-55],[-50,-65],[-55,-67]],
   // Cape of Good Hope: Europe → Asia (bypassing Suez)
@@ -1012,9 +1392,10 @@ const LANE_PTS = [
 const lanePolylines = [];
 function buildLanes() {
   lanePolylines.length = 0;
-  LANE_PTS.forEach(pts => {
+  LANE_PTS.forEach((pts, i) => {
     const pl = MAP.addPolyline(pts, 'rgba(0,212,255,0.28)', 1.5, 1, [6,10]);
-    pl.tag = 'lane';
+    pl.tag  = 'lane';
+    pl.name = LANE_NAMES[i] || ('Shipping Lane ' + (i+1));
     lanePolylines.push(pl);
   });
 }
@@ -1056,49 +1437,10 @@ function updateStats() {
 // ════════════════════════════════════════════════════════
 //  TIME SLIDER
 // ════════════════════════════════════════════════════════
-let timeOffset = 0; // days from now (-7 to +7)
 
-function buildTicks() {
-  const c = document.getElementById('ttks');
-  if (!c) return;
-  c.innerHTML = '';
-  for (let d = -7; d <= 0; d++) {
-    const p = ((d + 7) / 7 * 100).toFixed(2) + '%';
-    const t = document.createElement('div'); t.className='tk'; t.style.left=p; c.appendChild(t);
-    const l = document.createElement('div'); l.className='tkl'; l.style.left=p;
-    l.textContent = d===0 ? 'NOW' : d + 'd';
-    if (d===0) { l.style.color='#00e5a0'; l.style.fontWeight='600'; }
-    c.appendChild(l);
-  }
-}
 
-function updateTimeDisplay() {
-  const now = new Date();
-  const tgt = new Date(now.getTime() + timeOffset * 86400000);
-  const fmt = d => d.toISOString().replace('T',' ').slice(0,16) + ' UTC';
-  const el  = document.getElementById('tc');
-  if (Math.abs(timeOffset) < 0.05) {
-    if (el) el.innerHTML = '<span class="tnow">● LIVE — ' + fmt(tgt) + '</span>';
-  } else {
-    if (el) el.innerHTML = '<span class="thist">◀ ' + fmt(tgt) + '</span>';
-  }
-  const btn = document.getElementById('btn-now');
-  if (btn) btn.classList.toggle('on', Math.abs(timeOffset) < 0.05);
-}
 
-function onSlide(val) {
-  timeOffset = Math.min(0, parseFloat(val));  // clamp: no future
-  updateTimeDisplay();
-  MAP.render();
-}
 
-function jmpT(days) {
-  timeOffset = Math.min(0, days);
-  const tr = document.getElementById('trange');
-  if (tr) tr.value = timeOffset;
-  updateTimeDisplay();
-  MAP.render();
-}
 
 
 // ═══════════════════════════════════════════════
@@ -1202,6 +1544,20 @@ function drawVesselsOnCanvas(ctx, project) {
     ctx.stroke();
 
     ctx.restore();
+
+    // ── Label at zoom ≥ 11
+    if (MAP.currentZoom >= 11) {
+      const label = v.NAME || v.name || mmsi;
+      ctx.save();
+      ctx.font = '9px DM Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillText(label, x + 1, y + 13);
+      ctx.fillStyle = col;
+      ctx.globalAlpha = 0.9;
+      ctx.fillText(label, x, y + 12);
+      ctx.restore();
+    }
   }
 
   ctx.globalAlpha = 1;
@@ -2097,6 +2453,51 @@ function drawWeatherTiles(ctx, z, ox, oy, W, H, TILE) {
   ctx.restore();
 }
 
+
+// ── Shipping lane click/hover detection
+function hitTestLane(mx, my, project) {
+  let bestDist = 8, bestLane = null;  // 8px hit radius
+  for (const pl of lanePolylines) {
+    if (!pl.visible) continue;
+    const pts = pl.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const {x: x1, y: y1} = project(pts[i][0],   pts[i][1]);
+      const {x: x2, y: y2} = project(pts[i+1][0], pts[i+1][1]);
+      // Skip segments that jump across the screen (antimeridian split)
+      if (Math.abs(x2 - x1) > 800) continue;
+      // Distance from point to segment
+      const dx = x2 - x1, dy = y2 - y1;
+      const lenSq = dx*dx + dy*dy;
+      let t = lenSq > 0 ? ((mx-x1)*dx + (my-y1)*dy) / lenSq : 0;
+      t = Math.max(0, Math.min(1, t));
+      const dist = Math.hypot(mx - (x1 + t*dx), my - (y1 + t*dy));
+      if (dist < bestDist) { bestDist = dist; bestLane = pl; }
+    }
+  }
+  return bestLane;
+}
+
+let laneTooltip = null;
+function showLaneTooltip(pl, mx, my) {
+  if (!pl) { hideLaneTooltip(); return; }
+  if (!laneTooltip) {
+    laneTooltip = document.createElement('div');
+    laneTooltip.style.cssText = 'position:fixed;z-index:600;pointer-events:none;'
+      + 'background:rgba(4,8,18,.92);border:1px solid rgba(0,212,255,.35);'
+      + 'border-radius:6px;padding:6px 11px;font-family:DM Mono,monospace;'
+      + 'font-size:10px;color:#00d4ff;white-space:nowrap;'
+      + 'box-shadow:0 2px 12px rgba(0,0,0,.5)';
+    document.body.appendChild(laneTooltip);
+  }
+  laneTooltip.textContent = '🚢 ' + pl.name;
+  laneTooltip.style.left = (mx + 14) + 'px';
+  laneTooltip.style.top  = (my - 10) + 'px';
+  laneTooltip.style.display = 'block';
+}
+function hideLaneTooltip() {
+  if (laneTooltip) laneTooltip.style.display = 'none';
+}
+
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
@@ -2107,8 +2508,6 @@ window.addEventListener('DOMContentLoaded', () => {
   buildLanes();
   updateStats();
   initSearch();
-  buildTicks();
-  updateTimeDisplay();
   // Pre-fetch alerts so header count populates without opening the modal
   setTimeout(() => fetchAlerts(), 3000);
   // Dismiss loader
