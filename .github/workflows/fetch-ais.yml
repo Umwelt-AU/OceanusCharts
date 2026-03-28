@@ -2,7 +2,7 @@ name: Fetch AIS Data
 
 on:
   schedule:
-    - cron: '*/5 * * * *'   # every 5 minutes (fits GitHub free tier: ~8,640 runs/month)
+    - cron: '*/10 * * * *'   # every 10 minutes (fits GitHub free tier: ~4,320 runs/month)
   workflow_dispatch:          # ← manual trigger — run this FIRST from the Actions tab
 
 jobs:
