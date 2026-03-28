@@ -1,0 +1,34 @@
+name: Fetch AIS Data
+
+on:
+  schedule:
+    - cron: '*/2 * * * *'   # every 2 minutes
+  workflow_dispatch:          # manual trigger from Actions tab
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install websockets
+
+      - name: Fetch AIS snapshot
+        env:
+          AIS_API_KEY: ${{ secrets.AIS_API_KEY }}
+        run: python fetch_ais.py
+
+      - name: Commit data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/vessels.json data/alerts.json
+          git diff --staged --quiet || git commit -m "chore: AIS snapshot $(date -u +%H:%M)"
+          git push

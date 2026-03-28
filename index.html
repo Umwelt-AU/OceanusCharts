@@ -325,27 +325,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 <div id="panel">
 
-    <!-- ── AIS Stream via local backend ─────────────── -->
+    
+  <!-- ── AIS Data ──────────────────────────────────── -->
   <div class="ps">
-    <div class="pt">⚡ AISStream — Live Feed</div>
-    <div id="ais-status" style="font-family:'DM Mono',monospace;font-size:8.5px;padding:4px 0 4px;color:rgba(180,210,225,.4);min-height:14px">Not connected</div>
-    <div style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(180,210,225,.3);margin-bottom:6px;line-height:1.6">
-      Endpoint (<span style="color:#00d4ff">/vessels</span> = same server):
-    </div>
-    <div style="display:flex;margin-bottom:5px">
-      <input id="ais-backend-url" type="text" value="http://localhost:8765"
-        style="flex:1;padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(0,180,220,.22);border-right:none;border-radius:6px 0 0 6px;color:#c8dde8;font-family:'DM Mono',monospace;font-size:9px;outline:none">
-      <button onclick="connectAISBackend()" style="padding:6px 10px;background:rgba(0,212,255,.12);border:1px solid rgba(0,180,220,.3);border-radius:0 6px 6px 0;color:#00d4ff;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer">
-        ⚡ Go
-      </button>
-    </div>
-    <div style="display:flex;gap:5px">
+    <div class="pt">⚡ AIS Data</div>
+    <div id="ais-status" style="font-family:'DM Mono',monospace;font-size:8.5px;padding:4px 0 4px;color:rgba(180,210,225,.4);min-height:14px">Loading…</div>
+    <div style="display:flex;gap:5px;margin-top:4px">
       <button class="lb" style="flex:1;margin:0;text-align:center" onclick="connectAISBackend()">↻ Refresh</button>
-      <button class="lb" style="flex:1;margin:0;text-align:center" onclick="stopAISPolling()">✕ Stop</button>
+      <button class="lb" style="flex:1;margin:0;text-align:center" onclick="stopAISPolling()">✕ Clear</button>
     </div>
-    <div style="font-family:'DM Mono',monospace;font-size:7.5px;color:rgba(180,210,225,.22);margin-top:7px;line-height:1.8">
-      <span style="color:#00d4ff">python server.py</span><br>
-      <span style="color:rgba(180,210,225,.3)">pip install websockets  (one-time)</span>
+    <div style="font-family:'DM Mono',monospace;font-size:7.5px;color:rgba(180,210,225,.25);margin-top:7px;line-height:1.7">
+      GitHub Actions updates every 2 min
     </div>
   </div>
 
@@ -856,9 +846,10 @@ async function fetchAlerts() {
   const ngaUrl = 'https://msi.nga.mil/api/publications/broadcast-warn?status=active&output=json';
 
   const attempts = [
-    '/alerts',                                                         // same-origin (local server)
-    'http://localhost:8000/alerts',                                    // explicit local
-    'https://corsproxy.io/?' + encodeURIComponent(ngaUrl),            // CORS proxy → NGA
+    'data/alerts.json',                                                 // GitHub Actions static file (best)
+    '/alerts',                                                          // local server same-origin
+    'http://localhost:8000/alerts',                                     // explicit local
+    'https://corsproxy.io/?' + encodeURIComponent(ngaUrl),             // CORS proxy → NGA direct
     'https://api.allorigins.win/raw?url=' + encodeURIComponent(ngaUrl), // backup proxy
   ];
 
@@ -945,9 +936,12 @@ function closeAlerts() {
 
 function flyToAlert(i) {
   const a = ALERTS[i];
-  if (!a || !a.loc) return;
+  if (!a) return;
+  const lat = a.lat ?? (a.loc && a.loc[0]);
+  const lon = a.lon ?? (a.loc && a.loc[1]);
+  if (lat == null || lon == null) return;
   closeAlerts();
-  MAP.flyTo(a.loc[0], a.loc[1], 7);
+  MAP.flyTo(lat, lon, 7);
 }
 
 
@@ -1651,88 +1645,87 @@ function schedAisRender() {
 }
 
 async function pollAISBackend() {
-  const baseUrl = (document.getElementById('ais-backend-url')?.value || 'http://localhost:8765').replace(/\/$/, '');
-  try {
-    const res = await fetch(baseUrl + '/vessels', { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-
-    const list = data.vessels || [];
-    const now  = Date.now();
-    let added = 0, updated = 0;
-
-    for (const v of list) {
-      const mmsi = String(v.mmsi || '');
-      if (!mmsi) continue;
-      const lat = parseFloat(v.lat), lon = parseFloat(v.lon);
-      if (!isFinite(lat) || !isFinite(lon)) continue;
-
-      const hdg = Number(v.heading) || 0;
-      const col = vfTypeColor(v.type || 0);
-
-      // Build a vessel record compatible with showVesselDetail
-      const vdata = {
-        MMSI:        mmsi,
-        LATITUDE:    lat,
-        LONGITUDE:   lon,
-        HEADING:     Math.round(hdg),
-        COURSE:      Number(v.course) || 0,
-        SPEED:       Number(v.speed)  || 0,
-        NAVSTAT:     v.navstat || 0,
-        NAME:        v.name    || null,
-        TYPE:        v.type    || 0,
-        CALLSIGN:    v.callsign    || '',
-        DESTINATION: v.destination || '',
-        IMO:         v.imo    || 0,
-        DRAUGHT:     v.draught || 0,
-        A:           v.dim_a  || 0,
-        B:           v.dim_b  || 0,
-        SRC:         'TER',
-        TIMESTAMP:   new Date(v.ts * 1000).toISOString().replace('T',' ').slice(0,19) + ' UTC',
-        _src:        'ais',
-        lastSeen:    now,
-      };
-
-      if (liveVessels.has(mmsi)) {
-        const existing = liveVessels.get(mmsi);
-        Object.assign(existing, vdata);
-        existing._lastHdg = hdg;
-        updated++;
-      } else {
-        // No DOM marker — drawn on canvas in drawVesselsOnCanvas()
-        vdata._lastHdg = hdg;
-        liveVessels.set(mmsi, vdata);
-        added++;
-      }
+  // Fetch from data/vessels.json published by GitHub Actions
+  // Try relative path first (works on GitHub Pages), then fallback to local backend
+  const sources = [
+    'data/vessels.json',
+    'http://localhost:8000/vessels',
+    'http://localhost:8765/vessels',
+  ];
+  let data = null;
+  for (const url of sources) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      data = await res.json();
+      console.log('[AIS] Loaded from', url);
+      break;
+    } catch(e) {
+      console.warn('[AIS] Failed:', url, e.message);
     }
-
-    // Remove vessels the server no longer reports (gone stale)
-    for (const [mmsi, v] of liveVessels) {
-      if (v._src !== 'ais') continue;
-      if (v.lastSeen < now - 5000) { // wasn't in this poll
-        // vessel is canvas-drawn, no DOM marker to remove
-        liveVessels.delete(mmsi);
-      }
-    }
-
-    aisCount = [...liveVessels.values()].filter(v => v._src === 'ais').length;
-    const el = document.getElementById('sv-ais');
-    if (el) el.textContent = aisCount.toLocaleString();
-
-    const ts = new Date().toISOString().slice(11,19);
-    setAisStatus('● ' + aisCount.toLocaleString() + ' vessels · ' + ts, '#00e5a0');
-    updateVesselCount();
-    schedAisRender();
-
-    // Show backend connection state
-    if (!data.connected) {
-      setAisStatus('⚠ Backend running but not connected to AIS', '#f0a500');
-    }
-
-  } catch(e) {
-    setAisStatus('⚠ Backend offline — ' + e.message, '#ff4560');
-    console.warn('AIS backend poll failed:', e.message);
   }
+  if (!data) {
+    setAisStatus('⚠ Could not load vessel data', '#ff4560');
+    return;
+  }
+
+  const list = data.vessels || [];
+  const now  = Date.now();
+  let added = 0, updated = 0;
+
+  for (const v of list) {
+    const mmsi = String(v.mmsi || '');
+    if (!mmsi) continue;
+    const lat = parseFloat(v.lat), lon = parseFloat(v.lon);
+    if (!isFinite(lat) || !isFinite(lon)) continue;
+
+    const hdg = Number(v.heading) || 0;
+    const col = vfTypeColor(v.type || 0);
+
+    const vdata = {
+      MMSI:        mmsi,
+      LATITUDE:    lat,
+      LONGITUDE:   lon,
+      HEADING:     Math.round(hdg),
+      COURSE:      Number(v.course) || 0,
+      SPEED:       Number(v.speed)  || 0,
+      NAVSTAT:     v.navstat || 0,
+      NAME:        v.name    || null,
+      TYPE:        v.type    || 0,
+      CALLSIGN:    v.callsign    || '',
+      DESTINATION: v.destination || '',
+      IMO:         v.imo    || 0,
+      DRAUGHT:     v.draught || 0,
+      A:           v.dim_a  || 0,
+      B:           v.dim_b  || 0,
+      SRC:         'TER',
+      TIMESTAMP:   v.ts ? new Date(v.ts * 1000).toISOString().replace('T',' ').slice(0,19) + ' UTC' : '—',
+      _src:        'ais',
+      lastSeen:    now,
+    };
+
+    if (liveVessels.has(mmsi)) {
+      const existing = liveVessels.get(mmsi);
+      Object.assign(existing, vdata);
+      existing._lastHdg = hdg;
+      updated++;
+    } else {
+      vdata._lastHdg = hdg;
+      liveVessels.set(mmsi, vdata);
+      added++;
+    }
+  }
+
+  updateCatCounts();
+  renderTypeFilter();
+  aisCount = [...liveVessels.values()].filter(v => v._src === 'ais').length;
+  const el = document.getElementById('sv-ais');
+  if (el) el.textContent = aisCount.toLocaleString();
+
+  const updatedStr = data.updated ? new Date(data.updated).toISOString().slice(11,19) + ' UTC' : '—';
+  setAisStatus('● ' + aisCount.toLocaleString() + ' vessels · ' + updatedStr, '#00e5a0');
+  updateVesselCount();
+  schedAisRender();
 }
 
 function startAISCountdown() {
@@ -1982,8 +1975,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const l = document.getElementById('ldr');
     if (l) { l.classList.add('fade'); setTimeout(() => l.style.display='none', 800); }
   }, 800);
-  // Auto-connect AISStream after map is ready
-  setTimeout(connectAISBackend, 1500);
+  // Auto-load vessel data from data/vessels.json (works on GitHub Pages + locally)
+  setTimeout(connectAISBackend, 1200);
 });
 </script>
 </body>
