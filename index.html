@@ -79,7 +79,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 /* ==== LEFT PANEL ==== */
 #panel{
-  position:fixed;left:0;top:54px;bottom:40px;width:258px;
+  position:fixed;left:0;top:54px;bottom:0;width:258px;
   z-index:400;background:rgba(5,10,20,.94);
   border-right:1px solid rgba(0,180,220,.18);
   backdrop-filter:blur(16px);
@@ -140,7 +140,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 /* ==== DETAIL PANEL ==== */
 #dp{
-  position:fixed;right:0;top:54px;bottom:40px;width:272px;
+  position:fixed;right:0;top:54px;bottom:0;width:272px;
   z-index:400;background:rgba(5,10,20,.94);
   border-left:1px solid rgba(0,180,220,.18);
   backdrop-filter:blur(16px);
@@ -320,9 +320,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
       <button class="lb" style="flex:1;margin:0;text-align:center" onclick="connectAISBackend()">↻ Refresh</button>
       <button class="lb" style="flex:1;margin:0;text-align:center" onclick="stopAISPolling()">✕ Clear</button>
     </div>
-    <div style="font-family:'DM Mono',monospace;font-size:7.5px;color:rgba(180,210,225,.25);margin-top:7px;line-height:1.7">
-      GitHub Actions updates every 2 min
-    </div>
   </div>
 
   <!-- ── Region Navigation ────────────────────────── -->
@@ -371,6 +368,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
     <div class="pt">Overlays</div>
     <div class="tl">
       <div class="tr on" id="ov-l" onclick="togOv('lanes',this)"><span>📍 Shipping Lanes</span><div class="tsw"></div></div>
+      <div class="tr" id="ov-ports" onclick="togOv('ports',this)"><span>⚓ Ports</span><div class="tsw"></div></div>
       <div class="tr" id="ov-wind" onclick="togOv('wind',this)"><span>💨 Wind</span><div class="tsw"></div></div>
       <div class="tr" id="ov-clouds" onclick="togOv('clouds',this)"><span>☁ Clouds</span><div class="tsw"></div></div>
       <div class="tr" id="ov-precip" onclick="togOv('precip',this)"><span>🌧 Precipitation</span><div class="tsw"></div></div>
@@ -536,6 +534,8 @@ const MAP = (() => {
     if(typeof drawVesselsOnCanvas === 'function') drawVesselsOnCanvas(ctx, project);
     // Alert markers on map
     if(typeof drawAlertsOnCanvas === 'function') drawAlertsOnCanvas(ctx, project);
+    // Port locations
+    if(typeof drawPortsOnCanvas === 'function') drawPortsOnCanvas(ctx, project);
 
     // Position DOM markers (selection ring only — not vessels)
     for(const m of markers){
@@ -1033,6 +1033,10 @@ function togOv(name, el) {
     MAP.render();
   }
   // Weather overlays — only one active at a time
+  if (name === 'ports') {
+    showPorts = on;
+    MAP.render();
+  }
   if (['wind','clouds','precip','temp'].includes(name)) {
     if (on) {
       // Turn off any other active weather overlay button
@@ -1132,6 +1136,25 @@ function drawVesselsOnCanvas(ctx, project) {
     if (x < -20 || x > MAP._W + 20 || y < -20 || y > MAP._H + 20) continue;
 
   // end if spd > 0.5
+
+    // ── Underway animation — wake ripple for moving vessels (navstat 0 = Underway)
+    const navstat = v.NAVSTAT ?? v.navstat ?? 0;
+    const isUnderway = navstat === 0 && spd > 0.5;
+    if (isUnderway) {
+      const phase = (now * 1.2) % 1;  // 0→1 cycle ~0.8s
+      const wakeR = 6 + phase * 10;
+      const wakeA = 0.18 * (1 - phase);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(hdg);
+      // Teardrop wake shape behind the vessel (negative y = astern)
+      ctx.beginPath();
+      ctx.ellipse(0, 4 + phase * 6, 2.5 + phase * 3, 5 + phase * 8, 0, 0, Math.PI * 2);
+      ctx.fillStyle = col;
+      ctx.globalAlpha = wakeA;
+      ctx.fill();
+      ctx.restore();
+    }
 
     // ── Vessel triangle
     ctx.save();
@@ -2121,6 +2144,149 @@ function hideLaneTooltip() {
   if (laneTooltip) laneTooltip.style.display = 'none';
 }
 
+
+// Low-fps animation loop for underway vessel wake effects (~8fps)
+let _motionRaf = null;
+let _motionLast = 0;
+function startMotionAnim() {
+  if (_motionRaf) return;
+  function tick(ts) {
+    if (ts - _motionLast > 120) {
+      _motionLast = ts;
+      MAP.render();
+    }
+    _motionRaf = requestAnimationFrame(tick);
+  }
+  _motionRaf = requestAnimationFrame(tick);
+}
+
+
+// ════════════════════════════════════════════════════════
+//  PORT LOCATIONS OVERLAY
+//  tier: 1=megaport (zoom≥3), 2=major (zoom≥5), 3=regional (zoom≥7)
+// ════════════════════════════════════════════════════════
+const PORTS = [
+  // Tier 1 — world's largest ports / key chokepoints
+  {n:'Shanghai',       lat:31.23, lon:121.47, t:1},
+  {n:'Singapore',      lat:1.26,  lon:103.82, t:1},
+  {n:'Rotterdam',      lat:51.94, lon:4.13,   t:1},
+  {n:'Ningbo-Zhoushan',lat:29.87, lon:121.55, t:1},
+  {n:'Guangzhou',      lat:23.10, lon:113.26, t:1},
+  {n:'Busan',          lat:35.10, lon:129.04, t:1},
+  {n:'Hong Kong',      lat:22.29, lon:114.17, t:1},
+  {n:'Qingdao',        lat:36.07, lon:120.33, t:1},
+  {n:'Tianjin',        lat:39.00, lon:117.72, t:1},
+  {n:'Dubai (Jebel Ali)',lat:24.98,lon:55.07, t:1},
+  {n:'Port Klang',     lat:3.00,  lon:101.40, t:1},
+  {n:'Antwerp',        lat:51.27, lon:4.40,   t:1},
+  {n:'Los Angeles',    lat:33.74, lon:-118.27,t:1},
+  {n:'Hamburg',        lat:53.55, lon:9.97,   t:1},
+  {n:'Tanjung Pelepas',lat:1.37,  lon:103.55, t:1},
+
+  // Tier 2 — major regional hubs
+  {n:'New York',       lat:40.67, lon:-74.04, t:2},
+  {n:'Tokyo / Yokohama',lat:35.44,lon:139.64, t:2},
+  {n:'Kaohsiung',      lat:22.62, lon:120.28, t:2},
+  {n:'Colombo',        lat:6.96,  lon:79.85,  t:2},
+  {n:'Mumbai',         lat:18.93, lon:72.84,  t:2},
+  {n:'Santos',         lat:-23.95,lon:-46.33, t:2},
+  {n:'Suez',           lat:29.97, lon:32.55,  t:2},
+  {n:'Port Said',      lat:31.26, lon:32.30,  t:2},
+  {n:'Aden',           lat:12.78, lon:45.03,  t:2},
+  {n:'Felixstowe',     lat:51.96, lon:1.35,   t:2},
+  {n:'Valencia',       lat:39.44, lon:-0.31,  t:2},
+  {n:'Algeciras',      lat:36.12, lon:-5.45,  t:2},
+  {n:'Cape Town',      lat:-33.92,lon:18.43,  t:2},
+  {n:'Sydney',         lat:-33.86,lon:151.20, t:2},
+  {n:'Melbourne',      lat:-37.83,lon:144.93, t:2},
+  {n:'Durban',         lat:-29.88,lon:31.04,  t:2},
+  {n:'Houston',        lat:29.74, lon:-95.27, t:2},
+  {n:'Vancouver',      lat:49.29, lon:-123.10,t:2},
+  {n:'Le Havre',       lat:49.49, lon:0.11,   t:2},
+  {n:'Piraeus',        lat:37.95, lon:23.63,  t:2},
+  {n:'Karachi',        lat:24.84, lon:66.99,  t:2},
+
+  // Tier 3 — regional ports
+  {n:'Osaka',          lat:34.65, lon:135.19, t:3},
+  {n:'Kobe',           lat:34.69, lon:135.20, t:3},
+  {n:'Xiamen',         lat:24.48, lon:118.08, t:3},
+  {n:'Shenzhen',       lat:22.53, lon:114.05, t:3},
+  {n:'Laem Chabang',   lat:13.08, lon:100.88, t:3},
+  {n:'Jakarta',        lat:-6.10, lon:106.88, t:3},
+  {n:'Chittagong',     lat:22.34, lon:91.82,  t:3},
+  {n:'Dammam',         lat:26.43, lon:50.10,  t:3},
+  {n:'Mombasa',        lat:-4.05, lon:39.67,  t:3},
+  {n:'Dar es Salaam',  lat:-6.82, lon:39.29,  t:3},
+  {n:'Casablanca',     lat:33.60, lon:-7.62,  t:3},
+  {n:'Lagos',          lat:6.45,  lon:3.40,   t:3},
+  {n:'Dakar',          lat:14.69, lon:-17.44, t:3},
+  {n:'Gdansk',         lat:54.35, lon:18.65,  t:3},
+  {n:'Genoa',          lat:44.41, lon:8.93,   t:3},
+  {n:'Marseille',      lat:43.30, lon:5.37,   t:3},
+  {n:'Barcelona',      lat:41.35, lon:2.18,   t:3},
+  {n:'Buenos Aires',   lat:-34.61,lon:-58.37, t:3},
+  {n:'Valparaíso',     lat:-33.04,lon:-71.62, t:3},
+  {n:'Callao',         lat:-12.06,lon:-77.15, t:3},
+  {n:'Auckland',       lat:-36.85,lon:174.77, t:3},
+  {n:'Brisbane',       lat:-27.47,lon:153.03, t:3},
+  {n:'Fremantle',      lat:-32.05,lon:115.75, t:3},
+];
+
+let showPorts = false;
+
+function drawPortsOnCanvas(ctx, project) {
+  if (!showPorts) return;
+  const z = MAP.currentZoom;
+
+  for (const p of PORTS) {
+    // Tier visibility thresholds
+    if (p.t === 1 && z < 3)  continue;
+    if (p.t === 2 && z < 5)  continue;
+    if (p.t === 3 && z < 7)  continue;
+
+    const {x, y} = project(p.lat, p.lon);
+    if (x < -30 || x > MAP._W + 30 || y < -30 || y > MAP._H + 30) continue;
+
+    // Circle size by tier
+    const r = p.t === 1 ? 5 : p.t === 2 ? 3.5 : 2.5;
+    const alpha = p.t === 1 ? 0.65 : p.t === 2 ? 0.5 : 0.4;
+
+    ctx.save();
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(x, y, r + 1.5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,212,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = alpha;
+    ctx.stroke();
+
+    // Inner fill dot
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,212,255,0.15)';
+    ctx.globalAlpha = alpha;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,212,255,0.6)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    // Label — only show at sufficient zoom
+    const labelZoom = p.t === 1 ? 4 : p.t === 2 ? 6 : 8;
+    if (z >= labelZoom) {
+      const fontSize = p.t === 1 ? 10 : p.t === 2 ? 9 : 8;
+      ctx.font = `${fontSize}px DM Mono, monospace`;
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = Math.min(1, (z - labelZoom + 1) * 0.7);
+      // Shadow for readability
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillText(p.n, x + r + 4, y + fontSize * 0.35 + 1);
+      ctx.fillStyle = '#00d4ff';
+      ctx.fillText(p.n, x + r + 3, y + fontSize * 0.35);
+    }
+    ctx.restore();
+  }
+}
+
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
@@ -2140,6 +2306,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }, 800);
   // Auto-load vessel data from data/vessels.json (works on GitHub Pages + locally)
   setTimeout(connectAISBackend, 1200);
+  startMotionAnim();
 });
 </script>
 </body>
