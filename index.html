@@ -217,13 +217,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 .et{padding:1px 5px;border-radius:3px;font-size:7.5px;letter-spacing:.07em}
 
 /* ==== TRAIL LEGEND ==== */
-#tleg{
-  position:fixed;left:268px;bottom:90px;z-index:420;
-  background:rgba(5,10,20,.93);border:1px solid rgba(0,180,220,.18);
-  border-radius:6px;padding:5px 9px;font-family:'DM Mono',monospace;font-size:8px;
-  display:flex;gap:9px;align-items:center;opacity:0;transition:opacity .3s;pointer-events:none
-}
-#tleg.vis{opacity:1}
 .li{display:flex;align-items:center;gap:3px}
 .ldi{width:6px;height:6px;border-radius:50%}
 
@@ -1029,16 +1022,7 @@ function buildLanes() {
 function togOv(name, el) {
   el.classList.toggle('on');
   const on = el.classList.contains('on');
-  if (name === 'trails') {
-    showT = on;
-    if (on) {
-      trailRaf = null;  // clear guard so startTrailAnim() can restart
-      startTrailAnim();
-    } else {
-      if (trailRaf) { cancelAnimationFrame(trailRaf); trailRaf = null; }
-    }
-    MAP.render();
-  }
+
   if (name === 'lanes') {
     showL = on;
     lanePolylines.forEach(pl => pl.visible = on);
@@ -1093,13 +1077,10 @@ function updateTimeDisplay() {
   const tgt = new Date(now.getTime() + timeOffset * 86400000);
   const fmt = d => d.toISOString().replace('T',' ').slice(0,16) + ' UTC';
   const el  = document.getElementById('tc');
-  const leg = document.getElementById('tleg');
   if (Math.abs(timeOffset) < 0.05) {
     if (el) el.innerHTML = '<span class="tnow">● LIVE — ' + fmt(tgt) + '</span>';
-    if (leg) leg.style.opacity = '0';
   } else {
     if (el) el.innerHTML = '<span class="thist">◀ ' + fmt(tgt) + '</span>';
-    if (leg) leg.style.opacity = '1';
   }
   const btn = document.getElementById('btn-now');
   if (btn) btn.classList.toggle('on', Math.abs(timeOffset) < 0.05);
@@ -1160,18 +1141,6 @@ function vfTypeLabel(t) {
 let trailPhase = 0;
 let trailRaf = null;
 let trailLastTick = 0;
-function startTrailAnim() {
-  if (trailRaf) return;
-  function tick(ts) {
-    if (ts - trailLastTick > 150) {  // ~6fps — slow, subtle drift
-      trailLastTick = ts;
-      trailPhase = (trailPhase + 0.2) % 40;
-      MAP.render();
-    }
-    trailRaf = requestAnimationFrame(tick);
-  }
-  trailRaf = requestAnimationFrame(tick);
-}
 
 function drawVesselsOnCanvas(ctx, project) {
   const now = Date.now() / 1000;
@@ -2142,10 +2111,8 @@ window.addEventListener('DOMContentLoaded', () => {
   initSearch();
   buildTicks();
   updateTimeDisplay();
-  startTrailAnim();
   // Pre-fetch alerts so header count populates without opening the modal
-  setTimeout(() => fetchAlerts(), 3000);  // drives history/forecast trail animation
-  document.getElementById('tleg').style.display = 'flex'; document.getElementById('tleg').style.opacity='0'; // show trail legend
+  setTimeout(() => fetchAlerts(), 3000);
   // Dismiss loader
   setTimeout(() => {
     const l = document.getElementById('ldr');
