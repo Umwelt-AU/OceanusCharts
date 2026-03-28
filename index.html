@@ -845,17 +845,25 @@ async function fetchAlerts() {
   // 2. Fall back: fetch NGA directly via corsproxy.io (works from GitHub Pages)
   const ngaUrl = 'https://msi.nga.mil/api/publications/broadcast-warn?status=active&output=json';
 
-  const attempts = [
-    'data/alerts.json',                                                 // GitHub Actions static file (best)
-    '/alerts',                                                          // local server same-origin
-    'http://localhost:8000/alerts',                                     // explicit local
-    'https://corsproxy.io/?' + encodeURIComponent(ngaUrl),             // CORS proxy → NGA direct
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(ngaUrl), // backup proxy
-  ];
+  const _isGHP = !['localhost','127.0.0.1',''].includes(location.hostname);
+  const attempts = _isGHP
+    ? [
+        'data/alerts.json',                                                  // GH Actions file (best)
+        'https://corsproxy.io/?' + encodeURIComponent(ngaUrl),              // NGA direct via proxy
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(ngaUrl), // backup proxy
+      ]
+    : [
+        'data/alerts.json',
+        '/alerts',
+        'http://localhost:8000/alerts',
+        'https://corsproxy.io/?' + encodeURIComponent(ngaUrl),
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(ngaUrl),
+      ];
 
   for (const url of attempts) {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+      if (res.status === 404) { console.log('[ALERTS] 404:', url.slice(0,50)); continue; }
       if (!res.ok) continue;
       const raw  = await res.json();
       // Local backend returns {alerts:[...]}; NGA direct returns array or {navwarnings:[...]}
@@ -1647,25 +1655,30 @@ function schedAisRender() {
 async function pollAISBackend() {
   // Fetch from data/vessels.json published by GitHub Actions
   // Try relative path first (works on GitHub Pages), then fallback to local backend
-  const sources = [
-    'data/vessels.json',
-    'http://localhost:8000/vessels',
-    'http://localhost:8765/vessels',
-  ];
+  const isGitHubPages = !['localhost','127.0.0.1',''].includes(location.hostname);
+  const sources = isGitHubPages
+    ? ['data/vessels.json']   // GH Pages: only the static file
+    : ['data/vessels.json', 'http://localhost:8000/vessels', 'http://localhost:8765/vessels'];
+
   let data = null;
   for (const url of sources) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (res.status === 404) { console.log('[AIS] 404:', url); continue; }
       if (!res.ok) continue;
       data = await res.json();
       console.log('[AIS] Loaded from', url);
       break;
     } catch(e) {
-      console.warn('[AIS] Failed:', url, e.message);
+      if (!isGitHubPages) console.warn('[AIS] Failed:', url, e.message);
     }
   }
   if (!data) {
-    setAisStatus('⚠ Could not load vessel data', '#ff4560');
+    if (isGitHubPages) {
+      setAisStatus('⏳ Waiting for first GitHub Actions run…', '#f0a500');
+    } else {
+      setAisStatus('⚠ Could not load vessel data', '#ff4560');
+    }
     return;
   }
 
