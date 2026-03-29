@@ -138,6 +138,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 .lb:last-child{margin-bottom:0}
 .lb:hover,.lb.on{color:#00d4ff;border-color:rgba(0,210,255,.5);background:rgba(0,212,255,.05)}
 
+/* ==== ANALYTICS PANEL ==== */
+#an-box.open { right: 0; }
+#an-table table { width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:8px }
+#an-table th { position:sticky;top:0;background:rgba(4,8,18,.98);padding:5px 6px;text-align:left;color:rgba(180,210,225,.4);border-bottom:1px solid rgba(0,180,220,.15);cursor:pointer;white-space:nowrap;z-index:2 }
+#an-table th:hover { color:#00d4ff }
+#an-table td { padding:4px 6px;border-bottom:1px solid rgba(0,180,220,.06);color:#c8dde8;vertical-align:middle }
+#an-table tr:hover td { background:rgba(0,212,255,.04);cursor:pointer }
+#an-table tr.dimmed td { opacity:0.3 }
+.an-sort-asc::after { content:' ▲' }
+.an-sort-desc::after { content:' ▼' }
+
 /* ==== DETAIL PANEL ==== */
 #dp{
   position:fixed;right:0;top:54px;bottom:0;width:272px;
@@ -282,39 +293,39 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 <!-- MAP — self-contained tile map engine -->
 
-<!-- ANALYTICS MODAL -->
-<div id="an-ov" onclick="closeAnalytics()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;backdrop-filter:blur(4px)"></div>
-<div id="an-box" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:601;background:rgba(4,8,18,.97);border:1px solid rgba(0,180,220,.35);border-radius:11px;padding:22px 24px;width:min(680px,94vw);max-height:80vh;overflow-y:auto;backdrop-filter:blur(20px)">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-    <div>
-      <span style="font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:.1em;color:#00d4ff">📊 Maritime Analytics</span>
-      <div style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(180,210,225,.35);margin-top:2px">Based on current AIS snapshot · commodity inferred from vessel type + DWT</div>
+<!-- ANALYTICS PANEL — right-side drawer -->
+<div id="an-box" style="position:fixed;top:54px;right:-440px;bottom:0;width:420px;z-index:450;background:rgba(4,8,18,.97);border-left:1px solid rgba(0,180,220,.25);backdrop-filter:blur(16px);display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1)">
+  <!-- Header -->
+  <div style="padding:14px 16px 10px;border-bottom:1px solid rgba(0,180,220,.15);flex-shrink:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:.1em;color:#00d4ff">📊 Analytics</span>
+      <button onclick="closeAnalytics()" style="background:none;border:none;color:rgba(180,210,225,.5);cursor:pointer;font-size:18px;padding:2px 6px">✕</button>
     </div>
-    <button onclick="closeAnalytics()" style="background:none;border:none;color:rgba(180,210,225,.5);cursor:pointer;font-size:20px">✕</button>
+    <!-- Filters row -->
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <select id="an-country" onchange="applyAnalyticsFilter()" style="flex:1;padding:4px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(0,180,220,.22);border-radius:5px;color:#c8dde8;font-family:'DM Mono',monospace;font-size:8.5px;outline:none">
+        <option value="">All destinations</option>
+      </select>
+      <button onclick="clearAnalyticsFilter()" title="Clear filter" style="padding:4px 8px;background:rgba(255,69,96,.08);border:1px solid rgba(255,69,96,.25);border-radius:5px;color:#ff4560;font-family:'DM Mono',monospace;font-size:8px;cursor:pointer">✕ Clear</button>
+    </div>
+    <div style="display:flex;gap:6px">
+      <select id="an-sort" onchange="renderAnalytics()" style="flex:1;padding:4px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(0,180,220,.22);border-radius:5px;color:#c8dde8;font-family:'DM Mono',monospace;font-size:8.5px;outline:none">
+        <option value="eta">Sort: Earliest ETA</option>
+        <option value="dwt">Sort: Largest DWT</option>
+        <option value="name">Sort: Name A–Z</option>
+        <option value="speed">Sort: Fastest</option>
+      </select>
+      <select id="an-commodity-filter" onchange="applyAnalyticsFilter()" style="flex:1;padding:4px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(0,180,220,.22);border-radius:5px;color:#c8dde8;font-family:'DM Mono',monospace;font-size:8.5px;outline:none">
+        <option value="">All commodities</option>
+      </select>
+    </div>
   </div>
-
-  <!-- Country selector -->
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-    <label style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(180,210,225,.5)">Destination country:</label>
-    <select id="an-country" onchange="renderAnalytics()" style="flex:1;min-width:180px;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(0,180,220,.25);border-radius:6px;color:#c8dde8;font-family:'DM Mono',monospace;font-size:9px;outline:none">
-      <option value="">All destinations</option>
-    </select>
-    <label style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(180,210,225,.5)">Sort:</label>
-    <select id="an-sort" onchange="renderAnalytics()" style="padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(0,180,220,.25);border-radius:6px;color:#c8dde8;font-family:'DM Mono',monospace;font-size:9px;outline:none">
-      <option value="eta">Earliest ETA</option>
-      <option value="dwt">Largest DWT</option>
-      <option value="count">By commodity count</option>
-    </select>
-  </div>
-
   <!-- Summary cards -->
-  <div id="an-summary" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap"></div>
-
-  <!-- Commodity breakdown -->
-  <div id="an-commodities" style="margin-bottom:16px"></div>
-
-  <!-- Vessel table -->
-  <div id="an-table"></div>
+  <div id="an-summary" style="display:flex;gap:6px;padding:10px 16px;flex-shrink:0;flex-wrap:wrap;border-bottom:1px solid rgba(0,180,220,.1)"></div>
+  <!-- Commodity bars -->
+  <div id="an-commodities" style="padding:10px 16px;flex-shrink:0;border-bottom:1px solid rgba(0,180,220,.1)"></div>
+  <!-- Scrollable vessel table -->
+  <div id="an-table" style="flex:1;overflow-y:auto;padding:10px 16px 16px"></div>
 </div>
 
 <div id="map">
@@ -429,7 +440,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 <div id="zoom-ctrl">
   <button class="zb" onclick="MAP.zoom(1)">+</button>
-  <button class="zb" onclick="MAP.zoom(-1)" style="font-size:24px;padding-bottom:2px">−</button>
+  <button class="zb" onclick="MAP.zoom(-1)" style="font-size:24px;padding-bottom:2px">-</button>
 </div>
 
 
@@ -465,9 +476,9 @@ const MAP = (() => {
   const polylines=[], markers=[];
 
   const STYLES={
-    dark:      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    dark:      'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
     satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    voyager:   'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    voyager:   'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
   };
   const SUBS=['a','b','c','d'];
 
@@ -502,7 +513,8 @@ const MAP = (() => {
 
   // ── Tile loading ──────────────────────────────────────────────
   function tileUrl(z,tx,ty){
-    const tpl=STYLES[tileStyle]||STYLES.dark;
+    const tpl=(STYLES[tileStyle]||STYLES.dark)
+      .replace('{s}','b').replace('{r}','');
     const s=SUBS[Math.abs(tx+ty)%4];
     const r=window.devicePixelRatio>=2?'@2x':'';
     return tpl.replace('{s}',s).replace('{z}',z).replace('{x}',tx).replace('{y}',ty).replace('{r}',r);
@@ -1157,6 +1169,8 @@ function drawVesselsOnCanvas(ctx, project) {
     const type = v.TYPE || v.type || 0;
     // Filter check
     if (!isVesselVisible(v)) continue;
+    // Analytics highlight — dim non-matching vessels
+    const isHighlighted = !analyticsHighlight || analyticsHighlight.has(mmsi);
 
     const col  = vfTypeColor(type);
     // AIS heading: 0=North, 90=East, 180=South, 270=West (clockwise)
@@ -1218,7 +1232,7 @@ function drawVesselsOnCanvas(ctx, project) {
     ctx.closePath();
 
     ctx.fillStyle = col;
-    ctx.globalAlpha = isSat ? 0.45 : 0.72;  // more subtle
+    ctx.globalAlpha = isHighlighted ? (isSat ? 0.45 : 0.72) : 0.08;  // dim non-matching
     ctx.fill();
 
     ctx.strokeStyle = 'rgba(0,0,0,0.2)';
@@ -1725,7 +1739,11 @@ async function pollAISBackend() {
     const hdg = Number(v.heading) || 0;
     const col = vfTypeColor(v.type || 0);
 
+    // Spread ALL fields from vessels.json (includes enriched fields:
+    // dest_country, dest_iso, commodity, vessel_class, dwt, gt, flag, flag_name, owner etc.)
     const vdata = {
+      ...v,
+      // Normalise the key fields to uppercase for consistency with detail panel
       MMSI:        mmsi,
       LATITUDE:    lat,
       LONGITUDE:   lon,
@@ -1767,6 +1785,11 @@ async function pollAISBackend() {
 
   const updatedStr = data.updated ? new Date(data.updated).toISOString().slice(11,19) + ' UTC' : '—';
   setAisStatus('● ' + aisCount.toLocaleString() + ' vessels · ' + updatedStr, '#00e5a0');
+  // Refresh analytics if panel is open
+  if (document.getElementById('an-box').classList.contains('open')) {
+    populateAnalyticsDropdowns();
+    renderAnalytics();
+  }
   updateVesselCount();
   schedAisRender();
 }
@@ -2329,7 +2352,7 @@ function drawPortsOnCanvas(ctx, project) {
 //  ANALYTICS PANEL
 // ════════════════════════════════════════════════════════
 
-// Port lat/lon lookup for ETA dead-reckoning
+// Port coords for ETA dead-reckoning (UN/LOCODE → [lat, lon])
 const PORT_COORDS = {
   'NLRTM':[51.94,4.13],'NLAMS':[52.38,4.90],'BEGNE':[51.23,4.41],'DEHAM':[53.55,9.97],
   'GBFXT':[51.96,1.35],'GBSOU':[50.90,-1.40],'FRLEH':[49.49,0.11],'FRMRS':[43.30,5.37],
@@ -2347,191 +2370,395 @@ const PORT_COORDS = {
   'JPOSA':[34.65,135.19],'USLAX':[33.74,-118.27],'USNYC':[40.67,-74.04],
   'USHOU':[29.74,-95.27],'USSAV':[32.08,-81.09],'USBAL':[39.28,-76.61],
   'CAVCR':[49.29,-123.10],'MXLZC':[22.90,-109.93],
-  'BRSAO':[23.95,-46.33],'ARRCE':[-34.61,-58.37],'CLVAP':[-33.04,-71.62],
+  'BRSAO':[-23.95,-46.33],'ARRCE':[-34.61,-58.37],'CLVAP':[-33.04,-71.62],
   'ZADRB':[-29.88,31.04],'ZACPT':[-33.92,18.43],'NGAPP':[6.45,3.40],
   'KESAI':[-4.05,39.67],'TZDAR':[-6.82,39.29],'MADIR':[33.60,-7.62],
   'AUDLW':[-33.86,151.20],'AUMEL':[-37.83,144.93],'AUBNE':[-27.47,153.03],
   'AUFRE':[-32.05,115.75],'NZAKL':[-36.85,174.77],'NZTRG':[-37.68,176.17],
 };
 
-function etaHours(vessel) {
-  // Dead-reckon ETA: distance to destination / speed
-  const dest = vessel.destination || '';
-  const locode = dest.match(/^[A-Z]{5}$/) ? dest : null;
-  const portCoords = locode ? PORT_COORDS[locode] : null;
-  if (!portCoords || !vessel.speed || vessel.speed < 0.5) return null;
-  const dlat = portCoords[0] - (vessel.lat || 0);
-  const dlon = portCoords[1] - (vessel.lon || 0);
-  const latR  = (vessel.lat || 0) * Math.PI / 180;
-  // Approximate nautical miles
-  const nm = Math.sqrt((dlat * 60)**2 + (dlon * 60 * Math.cos(latR))**2);
-  return nm / vessel.speed;   // hours
+// Also match free-text port names to coords (supplements LOCODE lookup)
+const PORT_NAME_COORDS = {
+  'ROTTERDAM':[51.94,4.13],'AMSTERDAM':[52.38,4.90],'ANTWERP':[51.23,4.41],
+  'HAMBURG':[53.55,9.97],'SINGAPORE':[1.26,103.82],'HONG KONG':[22.29,114.17],
+  'SHANGHAI':[31.23,121.47],'BUSAN':[35.10,129.04],'TOKYO':[35.44,139.64],
+  'YOKOHAMA':[35.44,139.64],'LOS ANGELES':[33.74,-118.27],'LONG BEACH':[33.77,-118.22],
+  'NEW YORK':[40.67,-74.04],'HOUSTON':[29.74,-95.27],'JEBEL ALI':[24.98,55.07],
+  'DUBAI':[24.98,55.07],'FELIXSTOWE':[51.96,1.35],'LE HAVRE':[49.49,0.11],
+  'BARCELONA':[41.35,2.18],'PIRAEUS':[37.95,23.63],'GENOA':[44.41,8.93],
+  'PORT KLANG':[3.00,101.40],'TANJUNG PELEPAS':[1.37,103.55],
+  'LAEM CHABANG':[13.08,100.88],'NINGBO':[29.87,121.55],'QINGDAO':[36.07,120.33],
+  'TIANJIN':[39.00,117.72],'GUANGZHOU':[23.10,113.26],'SHENZHEN':[22.53,114.05],
+  'JAKARTA':[-6.10,106.88],'COLOMBO':[6.96,79.85],'MUMBAI':[18.93,72.84],
+  'CHENNAI':[13.09,80.29],'KARACHI':[24.84,66.99],'SUEZ':[29.97,32.55],
+  'PORT SAID':[31.26,32.30],'ADEN':[12.78,45.03],'JEDDAH':[21.46,39.18],
+  'DAMMAM':[26.43,50.10],'SYDNEY':[-33.86,151.20],'MELBOURNE':[-37.83,144.93],
+  'SANTOS':[-23.95,-46.33],'BUENOS AIRES':[-34.61,-58.37],'DURBAN':[-29.88,31.04],
+  'CAPE TOWN':[-33.92,18.43],'LAGOS':[6.45,3.40],'MOMBASA':[-4.05,39.67],
+};
+
+// Destination → country mapping (UN/LOCODE prefix or text)
+const DEST_COUNTRY_MAP = {
+  'NL':'Netherlands','BE':'Belgium','DE':'Germany','GB':'United Kingdom',
+  'FR':'France','ES':'Spain','IT':'Italy','GR':'Greece','TR':'Turkey',
+  'EG':'Egypt','AE':'UAE','SA':'Saudi Arabia','IN':'India','PK':'Pakistan',
+  'BD':'Bangladesh','LK':'Sri Lanka','SG':'Singapore','MY':'Malaysia',
+  'TH':'Thailand','VN':'Vietnam','PH':'Philippines','CN':'China','HK':'Hong Kong',
+  'KR':'South Korea','JP':'Japan','US':'United States','CA':'Canada','MX':'Mexico',
+  'BR':'Brazil','AR':'Argentina','CL':'Chile','ZA':'South Africa','NG':'Nigeria',
+  'KE':'Kenya','TZ':'Tanzania','MA':'Morocco','AU':'Australia','NZ':'New Zealand',
+};
+const DEST_TEXT_COUNTRY = {
+  'ROTTERDAM':'NL','AMSTERDAM':'NL','ANTWERP':'BE','HAMBURG':'DE',
+  'FELIXSTOWE':'GB','SOUTHAMPTON':'GB','LONDON':'GB','LE HAVRE':'FR',
+  'MARSEILLE':'FR','BARCELONA':'ES','VALENCIA':'ES','ALGECIRAS':'ES',
+  'GENOA':'IT','TRIESTE':'IT','PIRAEUS':'GR','ISTANBUL':'TR',
+  'PORT SAID':'EG','SUEZ':'EG','ALEXANDRIA':'EG','JEBEL ALI':'AE',
+  'DUBAI':'AE','ABU DHABI':'AE','JEDDAH':'SA','DAMMAM':'SA',
+  'MUMBAI':'IN','NHAVA SHEVA':'IN','CHENNAI':'IN','KOLKATA':'IN',
+  'KARACHI':'PK','CHITTAGONG':'BD','COLOMBO':'LK',
+  'SINGAPORE':'SG','PORT KLANG':'MY','TANJUNG PELEPAS':'MY',
+  'LAEM CHABANG':'TH','BANGKOK':'TH','HO CHI MINH':'VN',
+  'SHANGHAI':'CN','NINGBO':'CN','TIANJIN':'CN','QINGDAO':'CN',
+  'GUANGZHOU':'CN','SHENZHEN':'CN','XIAMEN':'CN',
+  'HONG KONG':'HK','BUSAN':'KR','TOKYO':'JP','YOKOHAMA':'JP','OSAKA':'JP',
+  'LOS ANGELES':'US','LONG BEACH':'US','NEW YORK':'US','HOUSTON':'US',
+  'SAVANNAH':'US','NORFOLK':'US','SEATTLE':'US',
+  'VANCOUVER':'CA','SANTOS':'BR','BUENOS AIRES':'AR','VALPARAISO':'CL',
+  'DURBAN':'ZA','CAPE TOWN':'ZA','LAGOS':'NG','MOMBASA':'KE',
+  'DAR ES SALAAM':'TZ','CASABLANCA':'MA',
+  'SYDNEY':'AU','MELBOURNE':'AU','BRISBANE':'AU','FREMANTLE':'AU',
+  'AUCKLAND':'NZ',
+};
+
+function getDestCountry(v) {
+  // Try the server-enriched field first (most reliable)
+  if (v.dest_country) return [v.dest_iso || '', v.dest_country];
+  const dest = (v.DESTINATION || v.destination || '').trim().toUpperCase();
+  if (!dest || dest.length < 2) return ['',''];
+  // UN/LOCODE: exactly 5 alphanum, first 2 = ISO country
+  if (/^[A-Z]{2}[A-Z0-9]{3}$/.test(dest)) {
+    const iso = dest.slice(0,2);
+    const name = DEST_COUNTRY_MAP[iso] || iso;
+    return [iso, name];
+  }
+  // Text match
+  for (const [key, iso] of Object.entries(DEST_TEXT_COUNTRY)) {
+    if (dest.includes(key)) return [iso, DEST_COUNTRY_MAP[iso] || iso];
+  }
+  return ['',''];
 }
 
-function etaLabel(hours) {
-  if (hours === null) return '—';
-  if (hours < 24) return Math.round(hours) + 'h';
-  const d = Math.floor(hours / 24);
-  const h = Math.round(hours % 24);
-  return d + 'd ' + h + 'h';
+function getVesselEtaHours(v) {
+  const spd = v.SPEED || v.speed || 0;
+  if (spd < 0.5) return null;
+  const dest = (v.DESTINATION || v.destination || '').trim().toUpperCase();
+  // Try LOCODE coords
+  let portLL = PORT_COORDS[dest] || null;
+  if (!portLL) {
+    for (const [key, coords] of Object.entries(PORT_NAME_COORDS)) {
+      if (dest.includes(key)) { portLL = coords; break; }
+    }
+  }
+  if (!portLL) return null;
+  const lat = v.LATITUDE || v.lat || 0;
+  const lon = v.LONGITUDE || v.lon || 0;
+  const dlat = portLL[0] - lat;
+  const dlon = portLL[1] - lon;
+  const latR = lat * Math.PI / 180;
+  const nm = Math.sqrt((dlat*60)**2 + (dlon*60*Math.cos(latR))**2);
+  return nm / spd;
 }
 
-function etaDate(hours) {
-  if (hours === null) return null;
-  const d = new Date(Date.now() + hours * 3600000);
+function etaLabel(h) {
+  if (h === null) return '—';
+  if (h < 1) return Math.round(h*60) + 'min';
+  if (h < 24) return Math.round(h) + 'h';
+  return Math.floor(h/24) + 'd ' + Math.round(h%24) + 'h';
+}
+function etaDate(h) {
+  if (h === null) return '';
+  const d = new Date(Date.now() + h * 3600000);
   return d.toISOString().slice(0,16).replace('T',' ') + ' UTC';
 }
 
+// Active filters
+let anCountryFilter = '';
+let anCommodityFilter = '';
+let anSortCol = 'eta';
+let anSortDir = 1;  // 1=asc -1=desc
+
+// What's currently highlighted on the map due to analytics
+let analyticsHighlight = null;  // null=all, Set of mmsi = show only these dimmed otherwise
+
 function openAnalytics() {
-  document.getElementById('an-box').style.display = 'block';
-  document.getElementById('an-ov').style.display  = 'block';
-  populateCountryDropdown();
+  document.getElementById('an-box').classList.add('open');
+  populateAnalyticsDropdowns();
   renderAnalytics();
 }
 
 function closeAnalytics() {
-  document.getElementById('an-box').style.display = 'none';
-  document.getElementById('an-ov').style.display  = 'none';
+  document.getElementById('an-box').classList.remove('open');
+  clearAnalyticsFilter();
 }
 
-function populateCountryDropdown() {
-  const sel = document.getElementById('an-country');
-  const countries = {};
-  for (const v of liveVessels.values()) {
-    const c = v.dest_country || v.dest_iso;
-    if (c) countries[c] = (countries[c] || 0) + 1;
+function clearAnalyticsFilter() {
+  anCountryFilter = '';
+  anCommodityFilter = '';
+  analyticsHighlight = null;
+  const cc = document.getElementById('an-country');
+  const cf = document.getElementById('an-commodity-filter');
+  if (cc) cc.value = '';
+  if (cf) cf.value = '';
+  MAP.render();
+  renderAnalytics();
+}
+
+function applyAnalyticsFilter() {
+  anCountryFilter   = document.getElementById('an-country')?.value || '';
+  anCommodityFilter = document.getElementById('an-commodity-filter')?.value || '';
+  // Build highlight set — MMSIs that pass the filter
+  if (!anCountryFilter && !anCommodityFilter) {
+    analyticsHighlight = null;
+  } else {
+    analyticsHighlight = new Set();
+    for (const [mmsi, v] of liveVessels) {
+      const [,country] = getDestCountry(v);
+      const comm = v.commodity || inferCommodityFrontend(v.TYPE || v.type || 0);
+      const countryOk = !anCountryFilter || country === anCountryFilter;
+      const commOk    = !anCommodityFilter || comm.includes(anCommodityFilter);
+      if (countryOk && commOk) analyticsHighlight.add(mmsi);
+    }
   }
-  const sorted = Object.entries(countries).sort((a,b) => b[1]-a[1]);
-  const current = sel.value;
-  // Rebuild options
-  sel.innerHTML = '<option value="">All destinations (' + liveVessels.size.toLocaleString() + ' vessels)</option>';
-  sorted.forEach(([name, count]) => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name + ' (' + count + ')';
-    if (name === current) opt.selected = true;
-    sel.appendChild(opt);
+  MAP.render();
+  renderAnalytics();
+}
+
+// Fallback commodity inference for vessels without enriched data
+function inferCommodityFrontend(type) {
+  if (type >= 80 && type <= 84) return 'Crude Oil / Tanker';
+  if (type === 85) return 'LNG';
+  if (type === 86) return 'LPG';
+  if (type >= 87 && type <= 89) return 'Chemical Tanker';
+  if (type >= 70 && type <= 79) return 'Cargo / Bulk';
+  if (type >= 60 && type <= 69) return 'Passenger';
+  if (type >= 30 && type <= 39) return 'Fishing';
+  if (type >= 40 && type <= 49) return 'High Speed Craft';
+  if (type === 52) return 'Tug / Service';
+  return 'General / Unknown';
+}
+
+function populateAnalyticsDropdowns() {
+  // Country dropdown
+  const countries = {};
+  const commodities = {};
+  for (const v of liveVessels.values()) {
+    const [,country] = getDestCountry(v);
+    if (country) countries[country] = (countries[country]||0)+1;
+    const comm = v.commodity || inferCommodityFrontend(v.TYPE||v.type||0);
+    // Group into broad categories for the filter
+    const broad = comm.split(' (')[0].split(' /')[0].trim();
+    commodities[broad] = (commodities[broad]||0)+1;
+  }
+  const cc = document.getElementById('an-country');
+  const cf = document.getElementById('an-commodity-filter');
+  if (cc) {
+    cc.innerHTML = '<option value="">All destinations (' + liveVessels.size.toLocaleString() + ')</option>';
+    Object.entries(countries).sort((a,b)=>b[1]-a[1]).forEach(([name,cnt]) => {
+      cc.innerHTML += '<option value="'+name+'"'+(name===anCountryFilter?' selected':'')+'>'+name+' ('+cnt+')</option>';
+    });
+  }
+  if (cf) {
+    cf.innerHTML = '<option value="">All commodities</option>';
+    Object.entries(commodities).sort((a,b)=>b[1]-a[1]).forEach(([name,cnt]) => {
+      cf.innerHTML += '<option value="'+name+'"'+(name===anCommodityFilter?' selected':'')+'>'+name+' ('+cnt+')</option>';
+    });
+  }
+}
+
+function sortAnalytics(col) {
+  if (anSortCol === col) { anSortDir *= -1; }
+  else { anSortCol = col; anSortDir = 1; }
+  document.querySelectorAll('#an-table th').forEach(th => {
+    th.classList.remove('an-sort-asc','an-sort-desc');
+    if (th.dataset.col === col) th.classList.add(anSortDir===1?'an-sort-asc':'an-sort-desc');
   });
+  renderAnalytics();
 }
 
 function renderAnalytics() {
-  const country = document.getElementById('an-country')?.value || '';
-  const sortBy  = document.getElementById('an-sort')?.value || 'eta';
+  const sortSel = document.getElementById('an-sort')?.value || 'eta';
+  if (!anSortCol || anSortCol === 'eta') anSortCol = sortSel;
 
-  // Filter vessels
-  let vessels = [...liveVessels.values()].filter(v => {
-    if (!country) return true;
-    return v.dest_country === country || v.dest_iso === country;
-  });
+  // Build vessel list with derived fields
+  let vessels = [];
+  for (const v of liveVessels.values()) {
+    const [destIso, destCountry] = getDestCountry(v);
+    const comm = v.commodity || inferCommodityFrontend(v.TYPE || v.type || 0);
+    const broad = comm.split(' (')[0].split(' /')[0].trim();
 
-  // Attach ETA hours for sorting/display
-  vessels = vessels.map(v => ({...v, _eta: etaHours(v)}));
+    const countryOk = !anCountryFilter || destCountry === anCountryFilter;
+    const commOk    = !anCommodityFilter || broad === anCommodityFilter || comm.includes(anCommodityFilter);
+    if (!countryOk || !commOk) continue;
 
-  // Sort
-  if (sortBy === 'eta') {
-    vessels.sort((a,b) => {
-      if (a._eta === null && b._eta === null) return 0;
-      if (a._eta === null) return 1;
-      if (b._eta === null) return -1;
-      return a._eta - b._eta;
+    vessels.push({
+      ...v,
+      _destCountry: destCountry,
+      _destIso:     destIso,
+      _commodity:   comm,
+      _eta:         getVesselEtaHours(v),
     });
-  } else if (sortBy === 'dwt') {
-    vessels.sort((a,b) => (b.dwt||0) - (a.dwt||0));
   }
 
-  // Commodity counts
+  // Sort
+  vessels.sort((a, b) => {
+    let va, vb;
+    switch (anSortCol) {
+      case 'eta':
+        if (a._eta===null && b._eta===null) return 0;
+        if (a._eta===null) return 1;
+        if (b._eta===null) return -1;
+        return (a._eta - b._eta) * anSortDir;
+      case 'dwt':       va=a.dwt||0;                       vb=b.dwt||0;                       break;
+      case 'name':      va=(a.NAME||a.name||'').toLowerCase(); vb=(b.NAME||b.name||'').toLowerCase(); break;
+      case 'speed':     va=a.SPEED||a.speed||0;             vb=b.SPEED||b.speed||0;             break;
+      case 'commodity': va=(a._commodity||'').toLowerCase(); vb=(b._commodity||'').toLowerCase(); break;
+      case 'dest':      va=(a.DESTINATION||a.destination||'').toLowerCase(); vb=(b.DESTINATION||b.destination||'').toLowerCase(); break;
+      case 'flag':      va=(a.flag_name||a.flag||'').toLowerCase(); vb=(b.flag_name||b.flag||'').toLowerCase(); break;
+      default:          return 0;
+    }
+    if (typeof va === 'string') return va.localeCompare(vb) * anSortDir;
+    return (va - vb) * anSortDir;
+  });
+
+  // Commodity breakdown (from full filtered set)
   const commodities = {};
   let totalDwt = 0;
   vessels.forEach(v => {
-    const c = v.commodity || 'General / Unknown';
-    commodities[c] = (commodities[c] || 0) + 1;
-    totalDwt += v.dwt || 0;
+    const broad = v._commodity.split(' (')[0].split(' /')[0].trim();
+    commodities[broad] = (commodities[broad]||0)+1;
+    totalDwt += v.dwt||0;
   });
-  const topCommodities = Object.entries(commodities)
-    .sort((a,b) => b[1]-a[1]).slice(0, 8);
+  const topComm = Object.entries(commodities).sort((a,b)=>b[1]-a[1]).slice(0,6);
 
-  // ── Summary cards
-  const withEta = vessels.filter(v => v._eta !== null).length;
-  const withDwt = vessels.filter(v => (v.dwt||0) > 0).length;
-  document.getElementById('an-summary').innerHTML = [
-    ['Vessels', vessels.length.toLocaleString(), '#00d4ff'],
-    ['With ETA', withEta.toLocaleString(), '#00e5a0'],
-    ['Total DWT', totalDwt > 0 ? (totalDwt/1000).toFixed(0)+'k t' : '—', '#f0a500'],
-    ['Commodities', topCommodities.length, '#9b5de5'],
-  ].map(([label, val, col]) =>
-    '<div style="flex:1;min-width:110px;background:rgba(255,255,255,.02);border:1px solid rgba(0,180,220,.15);border-radius:8px;padding:10px 14px">'
-    + '<div style="font-family:DM Mono,monospace;font-size:18px;font-weight:500;color:' + col + '">' + val + '</div>'
-    + '<div style="font-family:DM Mono,monospace;font-size:8px;color:rgba(180,210,225,.4);margin-top:2px;letter-spacing:.1em;text-transform:uppercase">' + label + '</div>'
-    + '</div>'
-  ).join('');
-
-  // ── Commodity bar chart
-  const maxCount = topCommodities[0]?.[1] || 1;
+  // Summary cards
+  const withEta = vessels.filter(v=>v._eta!==null).length;
   const COMM_COLS = {
     'Crude Oil':'#ff6b35','LNG':'#ff9f1c','LPG':'#ffbf69',
-    'Chemical':'#e91e8c','Bulk':'#f0a500','Cargo':'#607d8b',
-    'Container':'#00d4ff','Passenger':'#e91e8c','Fish':'#607d8b',
+    'Chemical':'#e91e8c','Cargo':'#f0a500','Bulk':'#f0a500',
+    'Container':'#00d4ff','Passenger':'#e91e8c','Fishing':'#607d8b',
+    'Tug':'#00d4ff','High Speed':'#00e5a0','General':'#445566',
   };
-  function commColor(name) {
-    for (const [k,c] of Object.entries(COMM_COLS)) if (name.includes(k)) return c;
+  function commColor(n) {
+    for (const [k,c] of Object.entries(COMM_COLS)) if (n.includes(k)) return c;
     return '#445566';
   }
-  document.getElementById('an-commodities').innerHTML =
-    '<div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(180,210,225,.4);margin-bottom:8px">Commodity breakdown</div>'
-    + topCommodities.map(([name, count]) => {
-      const pct = (count / maxCount * 100).toFixed(1);
-      const col = commColor(name);
-      return '<div style="margin-bottom:6px">'
-        + '<div style="display:flex;justify-content:space-between;font-family:DM Mono,monospace;font-size:9px;margin-bottom:3px">'
-        + '<span style="color:#c8dde8">' + name + '</span>'
-        + '<span style="color:rgba(180,210,225,.5)">' + count + ' vessels</span></div>'
-        + '<div style="background:rgba(255,255,255,.05);border-radius:3px;height:6px">'
-        + '<div style="width:' + pct + '%;background:' + col + ';height:100%;border-radius:3px;opacity:0.75"></div></div></div>';
-    }).join('');
 
-  // ── Vessel table (top 50 by sort order)
-  const shown = vessels.slice(0, 50);
-  if (shown.length === 0) {
-    document.getElementById('an-table').innerHTML =
-      '<div style="text-align:center;padding:20px;font-family:DM Mono,monospace;font-size:9px;color:rgba(180,210,225,.4)">No vessel data with destination info</div>';
+  document.getElementById('an-summary').innerHTML = [
+    ['Vessels', vessels.length.toLocaleString(), '#00d4ff'],
+    ['With ETA', withEta, '#00e5a0'],
+    ['Total DWT', totalDwt>0?(totalDwt/1000).toFixed(0)+'k t':'—', '#f0a500'],
+  ].map(([l,v,c])=>'<div style="flex:1;min-width:80px;background:rgba(255,255,255,.02);border:1px solid rgba(0,180,220,.12);border-radius:6px;padding:7px 10px"><div style="font-family:DM Mono,monospace;font-size:16px;color:'+c+'">'+v+'</div><div style="font-family:DM Mono,monospace;font-size:7.5px;color:rgba(180,210,225,.4);margin-top:1px;text-transform:uppercase;letter-spacing:.1em">'+l+'</div></div>').join('');
+
+  const maxCnt = topComm[0]?.[1]||1;
+  // Build commodity bars using a helper to avoid quote escaping issues
+  function makeCommBar(name, cnt, maxCnt) {
+    const pct = (cnt / maxCnt * 100).toFixed(0);
+    const col = commColor(name);
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-bottom:5px;cursor:pointer';
+    div.dataset.name = name;
+    div.addEventListener('click', function(){ setCommFilter(this.dataset.name); });
+    div.innerHTML = '<div style="display:flex;justify-content:space-between;font-family:DM Mono,monospace;font-size:8px;margin-bottom:2px">'
+      + '<span style="color:#c8dde8">' + name + '</span>'
+      + '<span style="color:rgba(180,210,225,.4)">' + cnt + '</span></div>'
+      + '<div style="background:rgba(255,255,255,.05);border-radius:2px;height:4px">'
+      + '<div style="width:' + pct + '%;background:' + col + ';height:100%;border-radius:2px;opacity:.75;transition:width .3s"></div></div>';
+    return div;
+  }
+  const commEl = document.getElementById('an-commodities');
+  if (topComm.length === 0) {
+    commEl.innerHTML = '';
+  } else {
+    commEl.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:7.5px;letter-spacing:.2em;color:rgba(180,210,225,.35);margin-bottom:6px">COMMODITIES</div>';
+    const maxCnt2 = topComm[0][1];
+    topComm.forEach(([name, cnt]) => commEl.appendChild(makeCommBar(name, cnt, maxCnt2)));
+  }
+
+  // Table
+  if (vessels.length === 0) {
+    document.getElementById('an-table').innerHTML = '<div style="text-align:center;padding:24px;font-family:DM Mono,monospace;font-size:9px;color:rgba(180,210,225,.35)">No vessels match the current filter</div>';
     return;
   }
-  document.getElementById('an-table').innerHTML =
-    '<div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(180,210,225,.4);margin-bottom:8px">'
-    + 'Vessels' + (shown.length < vessels.length ? ' (showing ' + shown.length + ' of ' + vessels.length + ')' : '') + '</div>'
-    + '<div style="overflow-x:auto">'
-    + '<table style="width:100%;border-collapse:collapse;font-family:DM Mono,monospace;font-size:8.5px">'
-    + '<thead><tr style="color:rgba(180,210,225,.4);border-bottom:1px solid rgba(0,180,220,.15)">'
-    + '<th style="text-align:left;padding:4px 8px 4px 0">Vessel</th>'
-    + '<th style="text-align:left;padding:4px 8px">Commodity</th>'
-    + '<th style="text-align:right;padding:4px 8px">DWT</th>'
-    + '<th style="text-align:left;padding:4px 8px">Destination</th>'
-    + '<th style="text-align:right;padding:4px 8px">ETA</th>'
-    + '<th style="text-align:left;padding:4px 8px">Flag</th>'
-    + '</tr></thead><tbody>'
-    + shown.map((v, i) => {
-      const col    = vfTypeColor(v.TYPE || v.type || 0);
-      const name   = v.NAME || v.name || v.mmsi || '—';
-      const comm   = v.commodity || '—';
-      const dwt    = v.dwt > 0 ? (v.dwt/1000).toFixed(0)+'k' : '—';
-      const dest   = v.destination || '—';
-      const eta    = v._eta !== null ? etaLabel(v._eta) : '—';
-      const etaFull = v._eta !== null ? ' title="' + etaDate(v._eta) + '"' : '';
-      const flag   = v.flag_name || v.flag || '—';
-      const rowBg  = i%2===0 ? 'rgba(255,255,255,.01)' : 'transparent';
-      return '<tr style="border-bottom:1px solid rgba(0,180,220,.06);background:' + rowBg + ';cursor:pointer" onclick="closeAnalytics();selectV(\'' + v.mmsi + '\')">'
-        + '<td style="padding:5px 8px 5px 0;color:#c8dde8">'
-        + '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:' + col + ';margin-right:5px;vertical-align:middle"></span>'
-        + name + '</td>'
-        + '<td style="padding:5px 8px;color:rgba(180,210,225,.7)">' + comm + '</td>'
-        + '<td style="padding:5px 8px;text-align:right;color:#f0a500">' + dwt + '</td>'
-        + '<td style="padding:5px 8px;color:rgba(180,210,225,.6)">' + dest + '</td>'
-        + '<td style="padding:5px 8px;text-align:right;color:#00e5a0"' + etaFull + '>' + eta + '</td>'
-        + '<td style="padding:5px 8px;color:rgba(180,210,225,.5)">' + flag + '</td>'
-        + '</tr>';
-    }).join('')
-    + '</tbody></table></div>';
+
+  // Build table — all vessels, scrollable
+  const tbl = document.getElementById('an-table');
+  if (!tbl) return;
+
+  function _th(col, label, right) {
+    return '<th data-col="' + col + '" onclick="sortAnalytics(\'' + col + '\')" '
+      + (right ? 'style="text-align:right"' : '') + '>' + label + '</th>';
+  }
+  let html = '<table><thead><tr>'
+    + _th('name','Vessel')
+    + _th('commodity','Commodity')
+    + _th('dwt','DWT',true)
+    + _th('dest','Destination')
+    + _th('eta','ETA',true)
+    + _th('flag','Flag')
+    + '</tr></thead><tbody>';
+
+  vessels.forEach((v, i) => {
+    const col     = vfTypeColor(v.TYPE || v.type || 0);
+    const name    = v.NAME || v.name || v.mmsi || '—';
+    const comm    = v._commodity || '—';
+    const dwt     = (v.dwt||0) > 0 ? ((v.dwt||0)/1000).toFixed(0)+'k t' : '—';
+    const dest    = v.DESTINATION || v.destination || '—';
+    const flag    = v.flag_name || v.flag || '—';
+    const eta     = v._eta !== null ? etaLabel(v._eta) : '—';
+    const etaTip  = v._eta !== null ? ' title="ETA: ' + etaDate(v._eta) + '"' : '';
+    const isHigh  = analyticsHighlight ? analyticsHighlight.has(v.mmsi) : true;
+    const rowCls  = !isHigh ? ' class="dimmed"' : '';
+    html += '<tr' + rowCls + ' data-mmsi="' + v.mmsi + '" onclick="analyticsSelectVessel(this.dataset.mmsi)">'
+      + '<td><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:' + col + ';margin-right:5px;vertical-align:middle;flex-shrink:0"></span>'
+      + name + '</td>'
+      + '<td>' + comm + '</td>'
+      + '<td style="text-align:right;color:#f0a500">' + dwt + '</td>'
+      + '<td style="color:rgba(180,210,225,.65)">' + dest + '</td>'
+      + '<td style="text-align:right;color:#00e5a0"' + etaTip + '>' + eta + '</td>'
+      + '<td style="color:rgba(180,210,225,.5)">' + flag + '</td>'
+      + '</tr>';
+  });
+
+  html += '</tbody></table>';
+  if (vessels.length > 50) {
+    html += '<div style="text-align:center;padding:8px;font-family:DM Mono,monospace;font-size:8px;color:rgba(180,210,225,.3)">'
+      + vessels.length.toLocaleString() + ' vessels total — scroll to see all</div>';
+  }
+  tbl.innerHTML = html;
+
+  // Re-apply sort arrows
+  tbl.querySelectorAll('th[data-col]').forEach(th => {
+    th.classList.remove('an-sort-asc','an-sort-desc');
+    if (th.dataset.col === anSortCol) th.classList.add(anSortDir===1?'an-sort-asc':'an-sort-desc');
+  });
 }
+
+function setCommFilter(name) {
+  anCommodityFilter = name;
+  const cf = document.getElementById('an-commodity-filter');
+  if (cf) cf.value = name;
+  applyAnalyticsFilter();
+}
+
+function analyticsSelectVessel(mmsi) {
+  const v = liveVessels.get(String(mmsi));
+  if (!v) return;
+  const lat = v.LATITUDE||v.lat, lon = v.LONGITUDE||v.lon;
+  MAP.flyTo(lat, lon, Math.max(MAP.currentZoom, 8));
+  showVesselDetail(String(mmsi));
+}
+
 
 // ═══════════════════════════════════════════════
 //  INIT
