@@ -22,7 +22,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 #map{
   position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;
   background:#06111e;overflow:hidden;cursor:grab;
+  transition:right .3s cubic-bezier(.4,0,.2,1);
 }
+body.an-open #map { right:420px; }
+body.an-open #ptog { right:calc(420px + 18px); }
 #map:active{cursor:grabbing}
 #map-canvas{position:absolute;top:0;left:0;display:block}
 #marker-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
@@ -139,6 +142,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 .lb:hover,.lb.on{color:#00d4ff;border-color:rgba(0,210,255,.5);background:rgba(0,212,255,.05)}
 
 /* ==== ANALYTICS PANEL ==== */
+#an-box { right: -420px; }
 #an-box.open { right: 0; }
 #an-table table { width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:8px }
 #an-table th { position:sticky;top:0;background:rgba(4,8,18,.98);padding:5px 6px;text-align:left;color:rgba(180,210,225,.4);border-bottom:1px solid rgba(0,180,220,.15);cursor:pointer;white-space:nowrap;z-index:2 }
@@ -295,6 +299,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 <!-- ANALYTICS PANEL — right-side drawer -->
 <div id="an-box" style="position:fixed;top:54px;right:-440px;bottom:0;width:420px;z-index:450;background:rgba(4,8,18,.97);border-left:1px solid rgba(0,180,220,.25);backdrop-filter:blur(16px);display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1)">
+  <!-- Collapse tab on left edge -->
+  <button onclick="closeAnalytics()" style="position:absolute;left:-18px;top:50%;transform:translateY(-50%);width:18px;height:46px;background:rgba(4,8,18,.97);border:1px solid rgba(0,180,220,.25);border-right:none;border-radius:6px 0 0 6px;color:rgba(0,212,255,.5);cursor:pointer;font-size:9px;writing-mode:vertical-rl;display:flex;align-items:center;justify-content:center;padding:0">▶</button>
   <!-- Header -->
   <div style="padding:14px 16px 10px;border-bottom:1px solid rgba(0,180,220,.15);flex-shrink:0">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -343,7 +349,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
     <div class="si" onclick="openAlerts()" style="cursor:pointer;user-select:none" title="View active alerts"><span class="sv" id="sv-alrt" style="color:#ff4560">—</span><span class="sl" style="color:#ff4560">⚠ Alerts</span></div>
   </div>
   <div style="display:flex;align-items:center;gap:10px">
-    <button onclick="openAnalytics()" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(0,180,220,.3);background:rgba(0,212,255,.07);color:#00d4ff;font-family:'DM Mono',monospace;font-size:8px;cursor:pointer;letter-spacing:.05em">📊 Analytics</button>
+    <button onclick="document.getElementById('an-box').classList.contains('open')?closeAnalytics():openAnalytics()" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(0,180,220,.3);background:rgba(0,212,255,.07);color:#00d4ff;font-family:'DM Mono',monospace;font-size:8px;cursor:pointer;letter-spacing:.05em">📊 Analytics</button>
     <div class="lp"><div class="ld"></div><span id="llbl">LIVE</span></div>
     <div id="clk">—</div>
   </div>
@@ -2493,12 +2499,17 @@ let analyticsHighlight = null;  // null=all, Set of mmsi = show only these dimme
 
 function openAnalytics() {
   document.getElementById('an-box').classList.add('open');
+  document.body.classList.add('an-open');
+  // Trigger map resize so canvas refits
+  setTimeout(() => { MAP.init(); MAP.render(); }, 320);
   populateAnalyticsDropdowns();
   renderAnalytics();
 }
 
 function closeAnalytics() {
   document.getElementById('an-box').classList.remove('open');
+  document.body.classList.remove('an-open');
+  setTimeout(() => { MAP.init(); MAP.render(); }, 320);
   clearAnalyticsFilter();
 }
 
@@ -2780,6 +2791,8 @@ window.addEventListener('DOMContentLoaded', () => {
   // Auto-load vessel data from data/vessels.json (works on GitHub Pages + locally)
   setTimeout(connectAISBackend, 1200);
   startMotionAnim();
+  // Open analytics panel by default
+  openAnalytics();
 });
 </script>
 </body>
