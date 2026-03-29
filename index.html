@@ -151,8 +151,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 /* ==== DETAIL PANEL ==== */
 #dp{
-  position:fixed;right:0;top:54px;bottom:0;width:272px;
-  z-index:400;background:rgba(5,10,20,.94);
+  position:fixed;right:420px;top:54px;bottom:0;width:272px;
+  z-index:460;background:rgba(5,10,20,.97);
   border-left:1px solid rgba(0,180,220,.18);
   backdrop-filter:blur(16px);
   transform:translateX(272px);transition:transform .3s cubic-bezier(.4,0,.2,1);
@@ -1402,16 +1402,19 @@ function isVesselVisible(v) {
 
 function togCat(catId) {
   if (showAllTypes) {
+    // First click from "show all" state — isolate to just this category
     showAllTypes = false;
     activeCategories = new Set([catId]);
   } else if (activeCategories.has(catId)) {
+    // Remove this category — allow empty (show nothing)
     activeCategories.delete(catId);
-    if (activeCategories.size === 0) {
-      showAllTypes = true;
-      activeCategories = new Set(VESSEL_CATS.map(c => c.id));
-    }
   } else {
+    // Add this category back
     activeCategories.add(catId);
+  }
+  // If all categories are now selected, switch to showAllTypes mode
+  if (activeCategories.size >= VESSEL_CATS.length) {
+    showAllTypes = true;
   }
   // Sync analytics commodity filter to match type selection
   // If a single category is selected, set the matching commodity filter
