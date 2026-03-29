@@ -153,13 +153,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 #dp{
   position:fixed;right:420px;top:54px;bottom:0;width:300px;
   z-index:500;background:rgba(3,6,16,.98);
-  border-left:1px solid rgba(0,180,220,.3);border-right:1px solid rgba(0,180,220,.15);
+  border-left:1px solid rgba(0,180,220,.3);
   backdrop-filter:blur(20px);
-  transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
-  overflow-y:auto;
-  box-shadow:-4px 0 20px rgba(0,0,0,.5)
+  display:none;overflow-y:auto;
+  box-shadow:-4px 0 24px rgba(0,0,0,.6)
 }
-#dp.open{transform:translateX(0)}
+#dp.open{display:block}
 .dh{padding:13px 14px 10px;border-bottom:1px solid rgba(0,180,220,.12);display:flex;justify-content:space-between;align-items:flex-start}
 .dn{font-family:'Bebas Neue',cursive;font-size:19px;letter-spacing:.05em;color:#fff;line-height:1}
 .dt{font-family:'DM Mono',monospace;font-size:8.5px;margin-top:3px;letter-spacing:.12em}
@@ -1338,19 +1337,52 @@ const DEMO_MMSI_SETS = {
 // ── Vessel type category definitions
 // Each category has a unique ID, label, colour, and the exact AIS type codes it matches.
 // Non-overlapping: SAR(51), Tug(52), Law(55), Medical(58) each get their own entry.
+// AIS vessel type codes per ITU-R M.1371-5
+// Each code appears in exactly ONE category (no overlaps)
 const VESSEL_CATS = [
-  {id:'tanker',   label:'Tanker',           col:'#ff6b35', codes:new Set([...Array(10)].map((_,i)=>80+i))},
-  {id:'cargo',    label:'Cargo',            col:'#f0a500', codes:new Set([...Array(10)].map((_,i)=>70+i))},
-  {id:'passenger',label:'Passenger',        col:'#e91e8c', codes:new Set([...Array(10)].map((_,i)=>60+i))},
-  {id:'hsc',      label:'High Speed Craft', col:'#00e5a0', codes:new Set([...Array(10)].map((_,i)=>40+i))},
-  {id:'fishing',  label:'Fishing',          col:'#607d8b', codes:new Set([30,32,33,34,37,38,39])},
-  {id:'sailing',  label:'Sailing',          col:'#9b5de5', codes:new Set([36])},
-  {id:'towing',   label:'Towing / Dredge',  col:'#8899aa', codes:new Set([31,33])},
-  {id:'tug',      label:'Tug / Pilot',      col:'#00d4ff', codes:new Set([50,52,53,54,56,57,59])},
-  {id:'sar',      label:'Search & Rescue',  col:'#ff4560', codes:new Set([51])},
-  {id:'law',      label:'Law Enforcement',  col:'#ff2244', codes:new Set([55])},
-  {id:'medical',  label:'Medical',          col:'#ff6688', codes:new Set([58])},
-  {id:'other',    label:'Other / Unknown',  col:'#445566', codes:new Set([...[...Array(20)].map((_,i)=>i), ...[...Array(10)].map((_,i)=>90+i), 20,21,22,23,24,25,26,27,28,29,35])},
+  // 80-89: Tankers
+  {id:'tanker',   label:'Tanker',           col:'#ff6b35',
+   codes:new Set([80,81,82,83,84,85,86,87,88,89])},
+  // 70-79: Cargo
+  {id:'cargo',    label:'Cargo',            col:'#f0a500',
+   codes:new Set([70,71,72,73,74,75,76,77,78,79])},
+  // 60-69: Passenger
+  {id:'passenger',label:'Passenger',        col:'#e91e8c',
+   codes:new Set([60,61,62,63,64,65,66,67,68,69])},
+  // 40-49: High Speed Craft
+  {id:'hsc',      label:'High Speed Craft', col:'#00e5a0',
+   codes:new Set([40,41,42,43,44,45,46,47,48,49])},
+  // 30,32,34,37,38,39: Fishing (excl 31=towing, 33=dredging, 35=military, 36=sailing)
+  {id:'fishing',  label:'Fishing',          col:'#607d8b',
+   codes:new Set([30,32,34,37,38,39])},
+  // 36: Sailing / Pleasure
+  {id:'sailing',  label:'Sailing',          col:'#9b5de5',
+   codes:new Set([36])},
+  // 31=Towing, 33=Dredging/Underwater, 34 already in fishing above
+  {id:'towing',   label:'Towing / Dredge',  col:'#8899aa',
+   codes:new Set([31,33])},
+  // 50=Pilot, 52=Tug, 53=Port tender, 54=Anti-pollution, 56,57=Spare, 59=RR
+  {id:'tug',      label:'Tug / Port',       col:'#00d4ff',
+   codes:new Set([50,52,53,54,56,57,59])},
+  // 51: SAR
+  {id:'sar',      label:'Search & Rescue',  col:'#ff4560',
+   codes:new Set([51])},
+  // 55: Law enforcement
+  {id:'law',      label:'Law Enforcement',  col:'#ff2244',
+   codes:new Set([55])},
+  // 58: Medical
+  {id:'medical',  label:'Medical',          col:'#ff6688',
+   codes:new Set([58])},
+  // 35: Military/government
+  {id:'military', label:'Military / Gov',   col:'#bb7700',
+   codes:new Set([35])},
+  // Everything else: 0-29, 90-99 and any unmapped codes
+  {id:'other',    label:'Other / Unknown',  col:'#445566',
+   codes:new Set([
+     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,
+     20,21,22,23,24,25,26,27,28,29,
+     90,91,92,93,94,95,96,97,98,99
+   ])},
 ];
 
 // Build a fast lookup: type code → category id
@@ -1395,11 +1427,12 @@ function isVesselVisible(v) {
     const [, country] = getDestCountry(v);
     if (country !== anCountryFilter) return false;
   }
-  // Commodity filter (analytics)
+  // Commodity filter (analytics) — check via COMM_TO_CATS category membership
   if (anCommodityFilter) {
-    const comm = v.commodity || inferCommodityFrontend(v.TYPE || v.type || 0);
-    const broad = comm.split(' (')[0].split(' /')[0].trim();
-    if (broad !== anCommodityFilter && !comm.includes(anCommodityFilter)) return false;
+    const comm  = v.commodity || inferCommodityFrontend(v.TYPE || v.type || 0);
+    const broad = COMM_BROAD ? (COMM_BROAD[comm] || comm.split(' (')[0].split(' /')[0].trim()) : comm;
+    const filterBroad = COMM_BROAD ? (COMM_BROAD[anCommodityFilter] || anCommodityFilter) : anCommodityFilter;
+    if (broad !== filterBroad && broad !== anCommodityFilter && comm !== anCommodityFilter) return false;
   }
   return true;
 }
@@ -1897,6 +1930,7 @@ function deselect() {
   if (dp) dp.classList.remove('open');
   MAP.render();
 }
+
 
 function setTileStyle(name) {
   MAP.setTileStyle(name);
@@ -2556,22 +2590,60 @@ function clearAnalyticsFilter() {
 }
 
 // Map commodity filter name → vessel category ids
+// Maps broad commodity name → vessel category ids
+// Keys must match the output of inferCommodityFrontend() and fetch_ais.py commodity strings
 const COMM_TO_CATS = {
-  'Crude Oil':      ['tanker'],
-  'LNG':            ['tanker'],
-  'LPG':            ['tanker'],
-  'Chemical Tanker':['tanker'],
-  'Oil Products':   ['tanker'],
-  'Tanker':         ['tanker'],
-  'Cargo':          ['cargo'],
-  'Bulk':           ['cargo'],
-  'Container':      ['cargo'],
-  'General':        ['cargo','other'],
-  'Passenger':      ['passenger'],
-  'Fishing':        ['fishing'],
-  'High Speed':     ['hsc'],
-  'Tug':            ['tug'],
-  'Search':         ['sar'],
+  // Tanker subtypes
+  'Crude Oil':             ['tanker'],
+  'Crude Oil (VLCC)':      ['tanker'],
+  'Crude Oil (Suezmax)':   ['tanker'],
+  'Crude Oil (Aframax)':   ['tanker'],
+  'Oil Products':          ['tanker'],
+  'LNG':                   ['tanker'],
+  'LPG':                   ['tanker'],
+  'Chemical Tanker':       ['tanker'],
+  'Tanker':                ['tanker'],
+  'Tanker (unspecified)':  ['tanker'],
+  // Cargo subtypes
+  'Cargo / Bulk':          ['cargo'],
+  'Bulk':                  ['cargo'],
+  'Bulk — Iron Ore / Coal (Capesize)':   ['cargo'],
+  'Bulk — Grain / Coal (Panamax)':       ['cargo'],
+  'Bulk — Grain / Fertiliser (Handymax)':['cargo'],
+  'Container':             ['cargo'],
+  'General Cargo':         ['cargo'],
+  'Cargo (unspecified)':   ['cargo'],
+  // Passenger
+  'Passengers':            ['passenger'],
+  'Passenger / Cruise':    ['passenger'],
+  // High Speed
+  'High Speed Craft':      ['hsc'],
+  // Fishing
+  'Fish / Seafood':        ['fishing'],
+  'Fishing':               ['fishing'],
+  // Tugs
+  'Tug / Port Service':    ['tug'],
+  'Tug / Service':         ['tug'],
+  // SAR
+  'Search & Rescue':       ['sar'],
+};
+
+// Broad groupings for the commodity dropdown (many-to-one display)
+const COMM_BROAD = {
+  'Crude Oil':'Tanker','Crude Oil (VLCC)':'Tanker','Crude Oil (Suezmax)':'Tanker',
+  'Crude Oil (Aframax)':'Tanker','Oil Products / Chemicals':'Tanker',
+  'LNG':'Tanker','LPG':'Tanker','Chemical Tanker':'Tanker','Tanker':'Tanker',
+  'Tanker (unspecified)':'Tanker','Oil Products':'Tanker',
+  'Cargo / Bulk':'Cargo','Bulk':'Cargo','General Cargo':'Cargo',
+  'Cargo (unspecified)':'Cargo','Container':'Cargo',
+  'Bulk — Iron Ore / Coal (Capesize)':'Bulk Cargo',
+  'Bulk — Grain / Coal (Panamax)':'Bulk Cargo',
+  'Bulk — Grain / Fertiliser (Handymax)':'Bulk Cargo',
+  'Passengers':'Passenger','Passenger / Cruise':'Passenger',
+  'High Speed Craft':'High Speed','High Speed / Passenger Ferry':'High Speed',
+  'Fish / Seafood':'Fishing','Fishing':'Fishing',
+  'Tug / Port Service':'Tug','Tug / Service':'Tug',
+  'Search & Rescue':'SAR',
 };
 
 function applyAnalyticsFilter() {
@@ -2580,11 +2652,13 @@ function applyAnalyticsFilter() {
 
   // Sync left-panel type filter to match commodity selection
   if (anCommodityFilter) {
-    // Find which vessel categories contain this commodity
-    let matchCats = null;
-    for (const [comm, cats] of Object.entries(COMM_TO_CATS)) {
-      if (anCommodityFilter.includes(comm) || comm.includes(anCommodityFilter)) {
-        matchCats = cats; break;
+    // Exact match first, then prefix match
+    let matchCats = COMM_TO_CATS[anCommodityFilter] || null;
+    if (!matchCats) {
+      for (const [comm, cats] of Object.entries(COMM_TO_CATS)) {
+        if (comm.startsWith(anCommodityFilter) || anCommodityFilter.startsWith(comm)) {
+          matchCats = cats; break;
+        }
       }
     }
     if (matchCats) {
