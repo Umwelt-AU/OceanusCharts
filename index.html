@@ -298,7 +298,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
   <!-- Header -->
   <div style="padding:14px 16px 10px;border-bottom:1px solid rgba(0,180,220,.15);flex-shrink:0">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <span style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:.1em;color:#00d4ff">📊 Analytics</span>
+      <div>
+        <span style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:.1em;color:#00d4ff">📊 Analytics</span>
+        <div id="an-filter-status" style="font-family:'DM Mono',monospace;font-size:7.5px;color:rgba(0,212,255,.5);margin-top:2px;min-height:12px"></div>
+      </div>
     </div>
     <!-- Filters row -->
     <div style="display:flex;gap:6px;margin-bottom:8px">
@@ -1168,7 +1171,6 @@ function drawVesselsOnCanvas(ctx, project) {
     // Filter check
     if (!isVesselVisible(v)) continue;
     // Analytics highlight — dim non-matching vessels
-    const isHighlighted = !analyticsHighlight || analyticsHighlight.has(mmsi);
 
     const col  = vfTypeColor(type);
     // AIS heading: 0=North, 90=East, 180=South, 270=West (clockwise)
@@ -1230,7 +1232,7 @@ function drawVesselsOnCanvas(ctx, project) {
     ctx.closePath();
 
     ctx.fillStyle = col;
-    ctx.globalAlpha = isHighlighted ? (isSat ? 0.45 : 0.72) : 0.08;  // dim non-matching
+    ctx.globalAlpha = isSat ? 0.45 : 0.72;
     ctx.fill();
 
     ctx.strokeStyle = 'rgba(0,0,0,0.2)';
@@ -1369,7 +1371,7 @@ function updateCatCounts() {
 let activeCategories = new Set(); // empty = show nothing; special: null = show all
 
 // Whether to show all (before first filter interaction)
-let showAllTypes = false;  // start with nothing visible
+let showAllTypes = true;   // show all vessel types by default
 
 function isCatEnabled(catId) {
   if (showAllTypes) return true;
@@ -1377,25 +1379,59 @@ function isCatEnabled(catId) {
 }
 
 function isVesselVisible(v) {
-  if (showAllTypes) return true;
-  if (activeCategories.size === 0) return false;
-  const code = v.TYPE || v.type || 0;
-  const catId = TYPE_TO_CAT.get(code) || 'other';
-  return activeCategories.has(catId);
+  // Type category filter (left panel)
+  if (!showAllTypes) {
+    if (activeCategories.size === 0) return false;
+    const code = v.TYPE || v.type || 0;
+    const catId = TYPE_TO_CAT.get(code) || 'other';
+    if (!activeCategories.has(catId)) return false;
+  }
+  // Destination country filter (analytics)
+  if (anCountryFilter) {
+    const [, country] = getDestCountry(v);
+    if (country !== anCountryFilter) return false;
+  }
+  // Commodity filter (analytics)
+  if (anCommodityFilter) {
+    const comm = v.commodity || inferCommodityFrontend(v.TYPE || v.type || 0);
+    const broad = comm.split(' (')[0].split(' /')[0].trim();
+    if (broad !== anCommodityFilter && !comm.includes(anCommodityFilter)) return false;
+  }
+  return true;
 }
 
 function togCat(catId) {
   if (showAllTypes) {
-    // First toggle: switch from "all on" to "only this one"
     showAllTypes = false;
     activeCategories = new Set([catId]);
   } else if (activeCategories.has(catId)) {
     activeCategories.delete(catId);
+    if (activeCategories.size === 0) {
+      showAllTypes = true;
+      activeCategories = new Set(VESSEL_CATS.map(c => c.id));
+    }
   } else {
     activeCategories.add(catId);
   }
+  // Sync analytics commodity filter to match type selection
+  // If a single category is selected, set the matching commodity filter
+  if (!showAllTypes && activeCategories.size === 1) {
+    const cat = [...activeCategories][0];
+    const commMap = {tanker:'Crude Oil',cargo:'Cargo',passenger:'Passenger',
+                     fishing:'Fishing',hsc:'High Speed Craft',tug:'Tug'};
+    const comm = commMap[cat] || '';
+    anCommodityFilter = comm;
+    const cf = document.getElementById('an-commodity-filter');
+    if (cf) cf.value = comm;
+  } else {
+    anCommodityFilter = '';
+    const cf = document.getElementById('an-commodity-filter');
+    if (cf) cf.value = '';
+  }
   renderTypeFilter();
-  refreshVesselVisibility();
+  MAP.render();
+  populateAnalyticsDropdowns();
+  renderAnalytics();
 }
 
 function renderTypeFilter() {
@@ -2497,33 +2533,64 @@ function closeAnalytics() {
 }
 
 function clearAnalyticsFilter() {
-  anCountryFilter = '';
+  anCountryFilter   = '';
   anCommodityFilter = '';
   analyticsHighlight = null;
+  // Reset type filter to show all
+  showAllTypes = true;
+  activeCategories = new Set(VESSEL_CATS.map(c => c.id));
   const cc = document.getElementById('an-country');
   const cf = document.getElementById('an-commodity-filter');
   if (cc) cc.value = '';
   if (cf) cf.value = '';
+  renderTypeFilter();
   MAP.render();
   renderAnalytics();
 }
 
+// Map commodity filter name → vessel category ids
+const COMM_TO_CATS = {
+  'Crude Oil':      ['tanker'],
+  'LNG':            ['tanker'],
+  'LPG':            ['tanker'],
+  'Chemical Tanker':['tanker'],
+  'Oil Products':   ['tanker'],
+  'Tanker':         ['tanker'],
+  'Cargo':          ['cargo'],
+  'Bulk':           ['cargo'],
+  'Container':      ['cargo'],
+  'General':        ['cargo','other'],
+  'Passenger':      ['passenger'],
+  'Fishing':        ['fishing'],
+  'High Speed':     ['hsc'],
+  'Tug':            ['tug'],
+  'Search':         ['sar'],
+};
+
 function applyAnalyticsFilter() {
   anCountryFilter   = document.getElementById('an-country')?.value || '';
   anCommodityFilter = document.getElementById('an-commodity-filter')?.value || '';
-  // Build highlight set — MMSIs that pass the filter
-  if (!anCountryFilter && !anCommodityFilter) {
-    analyticsHighlight = null;
-  } else {
-    analyticsHighlight = new Set();
-    for (const [mmsi, v] of liveVessels) {
-      const [,country] = getDestCountry(v);
-      const comm = v.commodity || inferCommodityFrontend(v.TYPE || v.type || 0);
-      const countryOk = !anCountryFilter || country === anCountryFilter;
-      const commOk    = !anCommodityFilter || comm.includes(anCommodityFilter);
-      if (countryOk && commOk) analyticsHighlight.add(mmsi);
+
+  // Sync left-panel type filter to match commodity selection
+  if (anCommodityFilter) {
+    // Find which vessel categories contain this commodity
+    let matchCats = null;
+    for (const [comm, cats] of Object.entries(COMM_TO_CATS)) {
+      if (anCommodityFilter.includes(comm) || comm.includes(anCommodityFilter)) {
+        matchCats = cats; break;
+      }
     }
+    if (matchCats) {
+      showAllTypes = false;
+      activeCategories = new Set(matchCats);
+    }
+  } else {
+    // No commodity filter — restore all types
+    showAllTypes = true;
+    activeCategories = new Set(VESSEL_CATS.map(c => c.id));
   }
+
+  renderTypeFilter();
   MAP.render();
   renderAnalytics();
 }
@@ -2583,6 +2650,17 @@ function sortAnalytics(col) {
 function renderAnalytics() {
   const sortSel = document.getElementById('an-sort')?.value || 'eta';
   if (!anSortCol || anSortCol === 'eta') anSortCol = sortSel;
+
+  // Update filter status label
+  const statusEl = document.getElementById('an-filter-status');
+  if (statusEl) {
+    const parts = [];
+    if (anCommodityFilter) parts.push('⬡ ' + anCommodityFilter);
+    if (anCountryFilter)   parts.push('→ ' + anCountryFilter);
+    if (!showAllTypes && activeCategories.size < VESSEL_CATS.length)
+      parts.push('type: ' + [...activeCategories].join(', '));
+    statusEl.textContent = parts.length ? parts.join('  ·  ') : '';
+  }
 
   // Build vessel list with derived fields
   let vessels = [];
