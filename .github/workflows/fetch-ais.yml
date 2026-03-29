@@ -2,8 +2,8 @@ name: Fetch AIS Data
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # every 10 minutes (fits GitHub free tier: ~4,320 runs/month)
-  workflow_dispatch:          # ← manual trigger — run this FIRST from the Actions tab
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   fetch:
@@ -21,15 +21,16 @@ jobs:
       - name: Install dependencies
         run: pip install websockets
 
-      - name: Fetch AIS snapshot + alerts
+      - name: Fetch AIS + enrich metadata
         env:
-          AIS_API_KEY: ${{ secrets.AIS_API_KEY }}
+          AIS_API_KEY:    ${{ secrets.AIS_API_KEY }}
+          DATALASTIC_KEY: ${{ secrets.DATALASTIC_KEY }}
         run: python fetch_ais.py
 
       - name: Commit data files
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/vessels.json data/alerts.json
+          git add data/vessels.json data/alerts.json data/vessels_meta.json
           git diff --staged --quiet || git commit -m "chore: AIS snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
