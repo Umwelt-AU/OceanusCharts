@@ -151,12 +151,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 /* ==== DETAIL PANEL ==== */
 #dp{
-  position:fixed;right:0;top:54px;bottom:0;width:320px;
+  position:fixed;right:420px;top:54px;bottom:0;width:300px;
   z-index:500;background:rgba(3,6,16,.98);
-  border-left:2px solid rgba(0,180,220,.3);
+  border-left:1px solid rgba(0,180,220,.3);border-right:1px solid rgba(0,180,220,.15);
   backdrop-filter:blur(20px);
-  transform:translateX(320px);transition:transform .3s cubic-bezier(.4,0,.2,1);
-  overflow-y:auto
+  transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto;
+  box-shadow:-4px 0 20px rgba(0,0,0,.5)
 }
 #dp.open{transform:translateX(0)}
 .dh{padding:13px 14px 10px;border-bottom:1px solid rgba(0,180,220,.12);display:flex;justify-content:space-between;align-items:flex-start}
@@ -738,7 +739,10 @@ const MAP = (() => {
     // Check canvas vessels
     if(typeof hitTestVessel === 'function'){
       const mmsi = hitTestVessel(mx, my, project);
-      if(mmsi){ showVesselDetail(mmsi); return; }
+      if(mmsi){
+        if(mmsi === selId){ deselect(); return; }  // click same vessel = deselect
+        showVesselDetail(mmsi); return;
+      }
     }
 
     // Then DOM markers (selection ring etc.)
@@ -1402,17 +1406,19 @@ function isVesselVisible(v) {
 
 function togCat(catId) {
   if (showAllTypes) {
-    // First click from "show all" state — isolate to just this category
+    // Clicking a category when all are on → turn OFF just that one
+    // Build full set then remove the clicked one
     showAllTypes = false;
-    activeCategories = new Set([catId]);
+    activeCategories = new Set(VESSEL_CATS.map(c => c.id));
+    activeCategories.delete(catId);
   } else if (activeCategories.has(catId)) {
-    // Remove this category — allow empty (show nothing)
+    // Turn off this category
     activeCategories.delete(catId);
   } else {
-    // Add this category back
+    // Turn this category back on
     activeCategories.add(catId);
   }
-  // If all categories are now selected, switch to showAllTypes mode
+  // If all categories are now active, switch back to showAllTypes mode
   if (activeCategories.size >= VESSEL_CATS.length) {
     showAllTypes = true;
   }
@@ -1889,6 +1895,7 @@ function deselect() {
   clearRing();
   const dp = document.getElementById('dp');
   if (dp) dp.classList.remove('open');
+  MAP.render();
 }
 
 function setTileStyle(name) {
