@@ -151,11 +151,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
 
 /* ==== DETAIL PANEL ==== */
 #dp{
-  position:fixed;right:420px;top:54px;bottom:0;width:272px;
-  z-index:460;background:rgba(5,10,20,.97);
-  border-left:1px solid rgba(0,180,220,.18);
-  backdrop-filter:blur(16px);
-  transform:translateX(272px);transition:transform .3s cubic-bezier(.4,0,.2,1);
+  position:fixed;right:0;top:54px;bottom:0;width:320px;
+  z-index:500;background:rgba(3,6,16,.98);
+  border-left:2px solid rgba(0,180,220,.3);
+  backdrop-filter:blur(20px);
+  transform:translateX(320px);transition:transform .3s cubic-bezier(.4,0,.2,1);
   overflow-y:auto
 }
 #dp.open{transform:translateX(0)}
@@ -299,7 +299,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
   <div style="padding:14px 16px 10px;border-bottom:1px solid rgba(0,180,220,.15);flex-shrink:0">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div>
-        <span style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:.1em;color:#00d4ff">📊 Analytics</span>
+        <span style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:.1em;color:#00d4ff">🗺 Destinations</span>
         <div id="an-filter-status" style="font-family:'DM Mono',monospace;font-size:7.5px;color:rgba(0,212,255,.5);margin-top:2px;min-height:12px"></div>
       </div>
     </div>
@@ -1432,9 +1432,8 @@ function togCat(catId) {
     if (cf) cf.value = '';
   }
   renderTypeFilter();
-  MAP.render();
-  populateAnalyticsDropdowns();
-  renderAnalytics();
+  _schedMap();
+  _schedAnalytics();
 }
 
 function renderTypeFilter() {
@@ -1727,9 +1726,7 @@ function setAisStatus(msg, col) {
   if (llbl) llbl.textContent = (col === '#00e5a0') ? 'LIVE' : 'AIS';
 }
 
-function schedAisRender() {
-  requestAnimationFrame(() => MAP.render());
-}
+function schedAisRender() { _schedMap(); }
 
 async function pollAISBackend() {
   // Fetch from data/vessels.json published by GitHub Actions
@@ -2547,8 +2544,8 @@ function clearAnalyticsFilter() {
   if (cc) cc.value = '';
   if (cf) cf.value = '';
   renderTypeFilter();
-  MAP.render();
-  renderAnalytics();
+  _schedMap();
+  _schedAnalytics();
 }
 
 // Map commodity filter name → vessel category ids
@@ -2594,8 +2591,8 @@ function applyAnalyticsFilter() {
   }
 
   renderTypeFilter();
-  MAP.render();
-  renderAnalytics();
+  _schedMap();
+  _schedAnalytics();
 }
 
 // Fallback commodity inference for vessels without enriched data
@@ -2823,7 +2820,12 @@ function setCommFilter(name) {
   anCommodityFilter = name;
   const cf = document.getElementById('an-commodity-filter');
   if (cf) cf.value = name;
-  applyAnalyticsFilter();
+  anCommodityFilter = name;
+  const cf2 = document.getElementById('an-commodity-filter');
+  if (cf2) cf2.value = name;
+  renderTypeFilter();
+  _schedMap();
+  _schedAnalytics();
 }
 
 function analyticsSelectVessel(mmsi) {
@@ -2834,6 +2836,26 @@ function analyticsSelectVessel(mmsi) {
   showVesselDetail(String(mmsi));
 }
 
+
+
+// ─── Render debouncing ────────────────────────────────────
+// Batches map + analytics renders so rapid filter clicks
+// don't trigger multiple synchronous DOM rebuilds.
+let _mapRafId  = null;
+let _anTimerId = null;
+
+function _schedMap() {
+  if (_mapRafId) return;
+  _mapRafId = requestAnimationFrame(() => { _mapRafId = null; MAP.render(); });
+}
+
+function _schedAnalytics() {
+  clearTimeout(_anTimerId);
+  _anTimerId = setTimeout(() => {
+    populateAnalyticsDropdowns();
+    renderAnalytics();
+  }, 60);  // 60ms debounce — imperceptible but batches rapid clicks
+}
 
 // ═══════════════════════════════════════════════
 //  INIT
