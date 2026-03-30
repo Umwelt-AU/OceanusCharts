@@ -3,7 +3,7 @@
 OCEANUS — GitHub Actions AIS fetcher + vessel metadata enrichment.
 
 What this does each run:
-  1. Streams aisstream.io for 90s → data/vessels.json
+  1. Streams aisstream.io for 240s (Class A + Class B) → data/vessels.json
   2. Fetches NGA MSI alerts       → data/alerts.json
   3. Enriches new IMOs with:
        a. Datalastic API (free tier, 100 calls/month)
@@ -42,7 +42,7 @@ except ImportError:
 AIS_KEY          = os.environ.get("AIS_API_KEY",    "5bfce7eabb88f7717bef025177beda52d618d2dc")
 DATALASTIC_KEY   = os.environ.get("DATALASTIC_KEY", "")   # optional
 AIS_URL          = "wss://stream.aisstream.io/v0/stream"
-COLLECT_SECS     = 90
+COLLECT_SECS     = 240
 ENRICH_MAX       = 40    # max new IMOs to enrich per run (stay in free-tier budget)
 DATA_DIR         = Path("data")
 OUT_VESSELS      = DATA_DIR / "vessels.json"
@@ -389,7 +389,7 @@ async def collect():
         await ws.send(json.dumps({
             "APIKey":             AIS_KEY,
             "BoundingBoxes":      [[[-90, -180], [90, 180]]],
-            "FilterMessageTypes": ["PositionReport", "ShipStaticData"],
+            "FilterMessageTypes": ["PositionReport", "ExtendedClassBPositionReport", "ShipStaticData"],
         }))
         print("[AIS] Subscribed — collecting…")
 
@@ -419,6 +419,36 @@ async def collect():
                     vessels[mmsi] = {
                         **prev,
                         "mmsi":    mmsi,
+                        "lat":     round(lat, 5),
+                        "lon":     round(lon, 5),
+                        "speed":   round(pr.get("Sog", 0), 1),
+                        "heading": round(hdg),
+                        "course":  round(pr.get("Cog", 0), 1),
+                        "navstat": pr.get("NavigationalStatus", 0),
+                        "ts":      round(time.time()),
+                    }
+
+                elif kind == "ExtendedClassBPositionReport":
+                    pr   = msg["Message"]["ExtendedClassBPositionReport"]
+                    meta = msg.get("MetaData", {})
+                    mmsi = str(meta.get("MMSI") or pr.get("UserID", ""))
+                    if not mmsi:
+                        continue
+                    lat = pr.get("Latitude")
+                    lon = pr.get("Longitude")
+                    if lat is None or lon is None:
+                        continue
+                    if abs(lat) < 0.001 and abs(lon) < 0.001:
+                        continue
+                    hdg = pr.get("TrueHeading", 511)
+                    if hdg == 511:
+                        hdg = pr.get("Cog", 0)
+                    prev = vessels.get(mmsi, {})
+                    vessels[mmsi] = {
+                        **prev,
+                        "mmsi":    mmsi,
+                        "name":    (pr.get("Name") or "").strip() or prev.get("name"),
+                        "type":    pr.get("TypeOfShipAndCargoType", 0) or prev.get("type", 0),
                         "lat":     round(lat, 5),
                         "lon":     round(lon, 5),
                         "speed":   round(pr.get("Sog", 0), 1),

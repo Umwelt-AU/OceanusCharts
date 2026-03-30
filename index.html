@@ -421,10 +421,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#06111e;color:#c8dde
       <div class="tr" id="ov-wind" onclick="togOv('wind',this)"><span>💨 Wind</span><div class="tsw"></div></div>
       <div class="tr" id="ov-clouds" onclick="togOv('clouds',this)"><span>☁ Clouds</span><div class="tsw"></div></div>
       <div class="tr" id="ov-precip" onclick="togOv('precip',this)"><span>🌧 Precipitation</span><div class="tsw"></div></div>
-      <div class="tr" id="ov-temp" onclick="togOv('temp',this)"><span>🌡 Sea Temp</span><div class="tsw"></div></div>
+      <div class="tr" id="ov-temp" onclick="togOv('temp',this)"><span>🌡 SST (NOAA)</span><div class="tsw"></div></div>
+      <div class="tr" id="ov-currents" onclick="togOv('currents',this)"><span>🌊 Currents (NOAA)</span><div class="tsw"></div></div>
     </div>
     <div style="font-family:'DM Mono',monospace;font-size:7.5px;color:rgba(180,210,225,.25);margin-top:6px;line-height:1.6">
-      Weather © <a href="https://openweathermap.org" target="_blank" style="color:rgba(0,212,255,.5);text-decoration:none">OpenWeatherMap</a>
+      Weather © <a href="https://openweathermap.org" target="_blank" style="color:rgba(0,212,255,.5);text-decoration:none">OpenWeatherMap</a> · SST &amp; Currents © <a href="https://coralreefwatch.noaa.gov" target="_blank" style="color:rgba(0,212,255,.5);text-decoration:none">NOAA</a>
     </div>
   </div>
   <div class="ps">
@@ -477,9 +478,9 @@ const MAP = (() => {
   const polylines=[], markers=[];
 
   const STYLES={
-    dark:      'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    dark:      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    voyager:   'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+    voyager:   'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
   };
   const SUBS=['a','b','c','d'];
 
@@ -514,11 +515,10 @@ const MAP = (() => {
 
   // ── Tile loading ──────────────────────────────────────────────
   function tileUrl(z,tx,ty){
-    const tpl=(STYLES[tileStyle]||STYLES.dark)
-      .replace('{s}','b').replace('{r}','');
     const s=SUBS[Math.abs(tx+ty)%4];
     const r=window.devicePixelRatio>=2?'@2x':'';
-    return tpl.replace('{s}',s).replace('{z}',z).replace('{x}',tx).replace('{y}',ty).replace('{r}',r);
+    return (STYLES[tileStyle]||STYLES.dark)
+      .replace('{s}',s).replace('{z}',z).replace('{x}',tx).replace('{y}',ty).replace('{r}',r);
   }
   function getTile(z,tx,ty){
     const n=Math.pow(2,z);
@@ -1090,10 +1090,10 @@ function togOv(name, el) {
     showPorts = on;
     MAP.render();
   }
-  if (['wind','clouds','precip','temp'].includes(name)) {
+  if (['wind','clouds','precip','temp','currents'].includes(name)) {
     if (on) {
       // Turn off any other active weather overlay button
-      ['wind','clouds','precip','temp'].forEach(w => {
+      ['wind','clouds','precip','temp','currents'].forEach(w => {
         if (w !== name) {
           const btn = document.getElementById('ov-' + w);
           if (btn) btn.classList.remove('on');
@@ -2180,23 +2180,44 @@ function openAlertDetail(i) {
 const OWM_KEY = 'bd5e378503939ddaee76f12ad7a97608';  // public demo key
 
 const WEATHER_LAYERS = {
-  wind:    { url: `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`,    opacity: 0.65 },
-  clouds:  { url: `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`,  opacity: 0.55 },
-  precip:  { url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, opacity: 0.65 },
-  temp:    { url: `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`,    opacity: 0.50 },
+  wind:     { url: `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`,    opacity: 0.65 },
+  clouds:   { url: `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`,  opacity: 0.55 },
+  precip:   { url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`, opacity: 0.65 },
+  // Sea Surface Temperature — NOAA Coral Reef Watch CoralTemp (daily, global, 5km)
+  // Colour scale: ~-2°C (deep blue) → 32°C+ (deep red). No API key required.
+  temp:     { url: 'https://coralreefwatch.noaa.gov/vs/geoserver/crw/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=true&LAYERS=sea_surface_temperature&STYLES=&SRS=EPSG%3A900913&WIDTH=256&HEIGHT=256&BBOX={bbox}', opacity: 0.60, wms: true },
+  // Ocean Currents — NOAA OSCAR v2 via ERDDAP (daily, 0.25°, no key required)
+  currents: { url: 'https://coastwatch.pfeg.noaa.gov/erddap/wms/erdQSwind1day/request?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&BBOX={bbox}&SRS=EPSG:900913&WIDTH=256&HEIGHT=256&LAYERS=erdQSwind1day:x_wind&STYLES=&FORMAT=image/png&TRANSPARENT=TRUE', opacity: 0.60, wms: true },
 };
 
 let activeWeather = null;  // one at a time
 const weatherCache = new Map();
 const MAX_WEATHER_CACHE = 200;
 
+// Convert tile coords to Web Mercator BBOX for WMS layers
+function tileToBbox(z, x, y) {
+  const n = Math.pow(2, z);
+  const tileSize = 2 * Math.PI * 6378137;
+  const w = (x / n) * tileSize - Math.PI * 6378137;
+  const e = ((x + 1) / n) * tileSize - Math.PI * 6378137;
+  const t = Math.PI * 6378137 - (y / n) * tileSize;
+  const b = Math.PI * 6378137 - ((y + 1) / n) * tileSize;
+  return `${w.toFixed(2)},${b.toFixed(2)},${e.toFixed(2)},${t.toFixed(2)}`;
+}
+
 function getWeatherTile(layer, z, x, y) {
   const key = `${layer}/${z}/${x}/${y}`;
   if (weatherCache.has(key)) return weatherCache.get(key);
+  const cfg = WEATHER_LAYERS[layer];
+  let src;
+  if (cfg.wms) {
+    src = cfg.url.replace('{bbox}', tileToBbox(z, x, y));
+  } else {
+    src = cfg.url.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+  }
   const img = new Image();
   img.crossOrigin = 'anonymous';
-  img.src = WEATHER_LAYERS[layer].url
-    .replace('{z}', z).replace('{x}', x).replace('{y}', y);
+  img.src = src;
   img.onload  = () => { img.ok = true;  MAP.render(); };
   img.onerror = () => { img.ok = false; };
   if (weatherCache.size > MAX_WEATHER_CACHE) {
