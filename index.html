@@ -421,7 +421,7 @@ body.panel-hidden #zoom-ctrl{left:30px}
     <div class="tl">
       <div class="tr on" id="ov-l" onclick="togOv('lanes',this)"><span>📍 Shipping Lanes</span><div class="tsw"></div></div>
       <div class="tr on" id="ov-ports" onclick="togOv('ports',this)"><span>⚓ Ports</span><div class="tsw"></div></div>
-      <div class="tr" id="ov-lighthouses" onclick="togOv('lighthouses',this)"><span>💛 Lighthouses</span><div class="tsw"></div></div>
+      <div class="tr on" id="ov-lighthouses" onclick="togOv('lighthouses',this)"><span>💛 Lighthouses</span><div class="tsw"></div></div>
       <div class="tr" id="ov-wind" onclick="togOv('wind',this)"><span>💨 Wind</span><div class="tsw"></div></div>
       <div class="tr" id="ov-clouds" onclick="togOv('clouds',this)"><span>☁ Clouds</span><div class="tsw"></div></div>
       <div class="tr" id="ov-precip" onclick="togOv('precip',this)"><span>🌧 Precipitation</span><div class="tsw"></div></div>
@@ -1411,14 +1411,16 @@ function updateCatCounts() {
 
 // Active categories — SET OF CATEGORY IDs. Empty = all shown.
 // Default: ALL OFF (empty set means nothing shown until user enables)
-let activeCategories = new Set(
-  (typeof VESSEL_CATS !== 'undefined' ? VESSEL_CATS : []).map(c => c.id).filter(id => !_defaultHidden.has(id))
-); // all enabled except 'other'
-
-// Whether to show all (before first filter interaction)
-// 'other' category is off by default; we start with showAllTypes=false and all cats enabled except 'other'
+// Whether to show all vessel types (false = use activeCategories set)
 let showAllTypes = false;
+
+// Categories hidden by default
 const _defaultHidden = new Set(['other']);
+
+// Active categories — all enabled except those in _defaultHidden
+let activeCategories = new Set(
+  VESSEL_CATS.map(c => c.id).filter(id => !_defaultHidden.has(id))
+);
 
 function isCatEnabled(catId) {
   if (showAllTypes) return true;
@@ -2384,137 +2386,114 @@ const PORTS = [
 // ═══════════════════════════════════════════════════════
 const LIGHTHOUSES = [
   // Europe
-  {n:'Eddystone',       lat:50.17, lon:-4.27},
-  {n:'Bishop Rock',     lat:49.87, lon:-6.44},
-  {n:'Wolf Rock',       lat:49.95, lon:-5.80},
-  {n:'Longships',       lat:50.05, lon:-5.75},
-  {n:'Fastnet Rock',    lat:51.37, lon:-9.60},
-  {n:'Cape Clear',      lat:51.43, lon:-9.50},
-  {n:'Hook Head',       lat:52.12, lon:-6.92},
-  {n:'Loop Head',       lat:52.56, lon:-9.93},
-  {n:'Mizen Head',      lat:51.45, lon:-9.81},
-  {n:'Slyne Head',      lat:53.40, lon:-10.24},
-  {n:'Tory Island',     lat:55.27, lon:-8.23},
-  {n:'Malin Head',      lat:55.38, lon:-7.36},
-  {n:'Mull of Kintyre', lat:55.31, lon:-5.81},
-  {n:'Ardnamurchan',    lat:56.72, lon:-6.23},
-  {n:'Cape Wrath',      lat:58.63, lon:-5.00},
-  {n:'Dunnet Head',     lat:58.67, lon:-3.38},
-  {n:'Noss Head',       lat:58.47, lon:-3.05},
-  {n:'Sumburgh Head',   lat:59.85, lon:-1.27},
-  {n:'Muckle Flugga',   lat:60.85, lon:-0.88},
-  {n:'Flamborough Head',lat:54.12, lon:-0.08},
-  {n:'Dungeness',       lat:50.92, lon:0.98},
-  {n:'South Foreland',  lat:51.14, lon:1.37},
-  {n:'Cap Gris-Nez',    lat:50.87, lon:1.58},
-  {n:'Barfleur',        lat:49.68, lon:-1.26},
-  {n:'Cap de la Hague', lat:49.73, lon:-1.95},
-  {n:'Ar-Men',          lat:47.80, lon:-5.10},
-  {n:'Créac'h',        lat:48.46, lon:-5.08},
-  {n:'Île Vierge',      lat:48.63, lon:-4.57},
-  {n:'Pointe du Raz',   lat:48.02, lon:-4.73},
-  {n:'Cabo Finisterre', lat:42.88, lon:-9.27},
-  {n:'Cabo Roca',       lat:38.78, lon:-9.50},
-  {n:'Cabo de São Vicente',lat:37.02,lon:-8.99},
-  {n:'Cabo Trafalgar',  lat:36.18, lon:-6.03},
-  {n:'Tarifa',          lat:36.01, lon:-5.61},
-  {n:'Europa Point',    lat:36.11, lon:-5.35},
-  {n:'Cabo Nao',        lat:38.73, lon:0.24},
-  {n:'Cap de Creus',    lat:42.32, lon:3.32},
-  {n:'Cap Bear',        lat:42.52, lon:3.13},
-  {n:'Île Plane',       lat:43.20, lon:5.23},
-  {n:'Cap Corse',       lat:43.00, lon:9.35},
-  {n:'Cap Bon',         lat:37.08, lon:11.05},
-  {n:'Capo Spartivento',lat:37.92, lon:15.13},
-  {n:'Capo Passero',    lat:36.68, lon:15.15},
-  {n:'Capo Colonna',    lat:39.03, lon:17.20},
-  {n:'Punta Stilo',     lat:38.44, lon:16.57},
-  {n:'Capo Bon (IT)',   lat:38.20, lon:15.65},
-  {n:'Cape Matapan',    lat:36.39, lon:22.48},
-  {n:'Cape Sounion',    lat:37.65, lon:24.02},
-  {n:'Chios NE',        lat:38.56, lon:26.15},
-  {n:'Bosphorus S',     lat:41.02, lon:29.00},
-  {n:'Bosphorus N',     lat:41.22, lon:29.12},
+  {n:"Eddystone",          lat:50.17, lon:-4.27},
+  {n:"Bishop Rock",        lat:49.87, lon:-6.44},
+  {n:"Wolf Rock",          lat:49.95, lon:-5.80},
+  {n:"Longships",          lat:50.05, lon:-5.75},
+  {n:"Fastnet Rock",       lat:51.37, lon:-9.60},
+  {n:"Cape Clear",         lat:51.43, lon:-9.50},
+  {n:"Hook Head",          lat:52.12, lon:-6.92},
+  {n:"Loop Head",          lat:52.56, lon:-9.93},
+  {n:"Mizen Head",         lat:51.45, lon:-9.81},
+  {n:"Slyne Head",         lat:53.40, lon:-10.24},
+  {n:"Tory Island",        lat:55.27, lon:-8.23},
+  {n:"Malin Head",         lat:55.38, lon:-7.36},
+  {n:"Mull of Kintyre",    lat:55.31, lon:-5.81},
+  {n:"Ardnamurchan",       lat:56.72, lon:-6.23},
+  {n:"Cape Wrath",         lat:58.63, lon:-5.00},
+  {n:"Dunnet Head",        lat:58.67, lon:-3.38},
+  {n:"Noss Head",          lat:58.47, lon:-3.05},
+  {n:"Sumburgh Head",      lat:59.85, lon:-1.27},
+  {n:"Muckle Flugga",      lat:60.85, lon:-0.88},
+  {n:"Flamborough Head",   lat:54.12, lon:-0.08},
+  {n:"Dungeness",          lat:50.92, lon:0.98},
+  {n:"South Foreland",     lat:51.14, lon:1.37},
+  {n:"Cap Gris-Nez",       lat:50.87, lon:1.58},
+  {n:"Barfleur",           lat:49.68, lon:-1.26},
+  {n:"Cap de la Hague",    lat:49.73, lon:-1.95},
+  {n:"Ar-Men",             lat:47.80, lon:-5.10},
+  {n:"Creac h",            lat:48.46, lon:-5.08},
+  {n:"Ile Vierge",         lat:48.63, lon:-4.57},
+  {n:"Pointe du Raz",      lat:48.02, lon:-4.73},
+  {n:"Cabo Finisterre",    lat:42.88, lon:-9.27},
+  {n:"Cabo Roca",          lat:38.78, lon:-9.50},
+  {n:"Cabo de Sao Vicente",lat:37.02, lon:-8.99},
+  {n:"Cabo Trafalgar",     lat:36.18, lon:-6.03},
+  {n:"Tarifa",             lat:36.01, lon:-5.61},
+  {n:"Europa Point",       lat:36.11, lon:-5.35},
+  {n:"Cabo Nao",           lat:38.73, lon:0.24},
+  {n:"Cap de Creus",       lat:42.32, lon:3.32},
+  {n:"Cap Bear",           lat:42.52, lon:3.13},
+  {n:"Ile Plane",          lat:43.20, lon:5.23},
+  {n:"Cap Corse",          lat:43.00, lon:9.35},
+  {n:"Cap Bon",            lat:37.08, lon:11.05},
+  {n:"Capo Spartivento",   lat:37.92, lon:15.13},
+  {n:"Capo Passero",       lat:36.68, lon:15.15},
+  {n:"Capo Colonna",       lat:39.03, lon:17.20},
+  {n:"Punta Stilo",        lat:38.44, lon:16.57},
+  {n:"Cape Matapan",       lat:36.39, lon:22.48},
+  {n:"Cape Sounion",       lat:37.65, lon:24.02},
+  {n:"Bosphorus South",    lat:41.02, lon:29.00},
+  {n:"Bosphorus North",    lat:41.22, lon:29.12},
   // North America
-  {n:'Cape Race',       lat:46.66, lon:-53.08},
-  {n:'Cape Sable',      lat:43.43, lon:-65.62},
-  {n:'Cape Cod',        lat:42.07, lon:-70.06},
-  {n:'Montauk Point',   lat:41.07, lon:-71.86},
-  {n:'Barnegat',        lat:39.75, lon:-74.11},
-  {n:'Cape Hatteras',   lat:35.25, lon:-75.53},
-  {n:'Cape Lookout',    lat:34.58, lon:-76.53},
-  {n:'Cape Fear',       lat:33.84, lon:-77.96},
-  {n:'Cape Canaveral',  lat:28.46, lon:-80.54},
-  {n:'Key West',        lat:24.55, lon:-81.80},
-  {n:'Dry Tortugas',    lat:24.63, lon:-82.91},
-  {n:'Cape San Blas',   lat:29.67, lon:-85.36},
-  {n:'Galveston',       lat:29.36, lon:-94.73},
-  {n:'Cape Flattery',   lat:48.38, lon:-124.73},
-  {n:'Cape Mendocino',  lat:40.44, lon:-124.41},
-  {n:'Point Reyes',     lat:38.00, lon:-122.99},
-  {n:'Point Conception',lat:34.45, lon:-120.47},
-  {n:'Point Loma',      lat:32.67, lon:-117.24},
+  {n:"Cape Race",          lat:46.66, lon:-53.08},
+  {n:"Cape Sable",         lat:43.43, lon:-65.62},
+  {n:"Cape Cod",           lat:42.07, lon:-70.06},
+  {n:"Montauk Point",      lat:41.07, lon:-71.86},
+  {n:"Cape Hatteras",      lat:35.25, lon:-75.53},
+  {n:"Cape Fear",          lat:33.84, lon:-77.96},
+  {n:"Cape Canaveral",     lat:28.46, lon:-80.54},
+  {n:"Key West",           lat:24.55, lon:-81.80},
+  {n:"Dry Tortugas",       lat:24.63, lon:-82.91},
+  {n:"Cape Flattery",      lat:48.38, lon:-124.73},
+  {n:"Point Reyes",        lat:38.00, lon:-122.99},
+  {n:"Point Conception",   lat:34.45, lon:-120.47},
+  {n:"Point Loma",         lat:32.67, lon:-117.24},
   // Pacific
-  {n:'Diamond Head',    lat:21.25, lon:-157.81},
-  {n:'Makapuu',         lat:21.31, lon:-157.65},
-  {n:'Cape Sarichef',   lat:54.60, lon:-164.92},
-  {n:'Five Finger',     lat:57.27, lon:-133.63},
+  {n:"Diamond Head",       lat:21.25, lon:-157.81},
+  {n:"Makapuu",            lat:21.31, lon:-157.65},
   // Australia / NZ
-  {n:'Cape Otway',      lat:-38.86,lon:143.51},
-  {n:'Gabo Island',     lat:-37.57,lon:149.92},
-  {n:'Montague Island', lat:-36.25,lon:150.22},
-  {n:'Cape Byron',      lat:-28.64,lon:153.64},
-  {n:'Sandy Cape',      lat:-24.70,lon:153.22},
-  {n:'Cape Moreton',    lat:-27.03,lon:153.47},
-  {n:'Cape Don',        lat:-11.31,lon:131.77},
-  {n:'Cape Leeuwin',    lat:-34.37,lon:115.14},
-  {n:'Rottnest Island', lat:-32.00,lon:115.50},
-  {n:'Point Moore',     lat:-28.85,lon:114.60},
-  {n:'Breaksea Island', lat:-34.93,lon:118.00},
-  {n:'Cape Willoughby', lat:-35.84,lon:138.00},
-  {n:'Cape Borda',      lat:-35.76,lon:136.59},
-  {n:'Cape Jaffa',      lat:-36.95,lon:139.69},
-  {n:'Cape du Couedic', lat:-36.05,lon:136.73},
-  {n:'Cape Bruny',      lat:-43.49,lon:147.14},
-  {n:'Tasman Island',   lat:-43.23,lon:148.00},
-  {n:'Maatsuyker',      lat:-43.65,lon:146.27},
-  {n:'Cape Egmont',     lat:-39.28,lon:173.75},
-  {n:'Farewell Spit',   lat:-40.55,lon:172.67},
+  {n:"Cape Otway",         lat:-38.86,lon:143.51},
+  {n:"Gabo Island",        lat:-37.57,lon:149.92},
+  {n:"Cape Byron",         lat:-28.64,lon:153.64},
+  {n:"Sandy Cape",         lat:-24.70,lon:153.22},
+  {n:"Cape Moreton",       lat:-27.03,lon:153.47},
+  {n:"Cape Don",           lat:-11.31,lon:131.77},
+  {n:"Cape Leeuwin",       lat:-34.37,lon:115.14},
+  {n:"Rottnest Island",    lat:-32.00,lon:115.50},
+  {n:"Point Moore",        lat:-28.85,lon:114.60},
+  {n:"Cape Willoughby",    lat:-35.84,lon:138.00},
+  {n:"Cape Borda",         lat:-35.76,lon:136.59},
+  {n:"Cape Bruny",         lat:-43.49,lon:147.14},
+  {n:"Tasman Island",      lat:-43.23,lon:148.00},
+  {n:"Maatsuyker",         lat:-43.65,lon:146.27},
+  {n:"Cape Egmont",        lat:-39.28,lon:173.75},
+  {n:"Farewell Spit",      lat:-40.55,lon:172.67},
   // Asia
-  {n:'Cape Inuboe',     lat:35.71, lon:140.87},
-  {n:'Cape Nojima',     lat:34.90, lon:139.88},
-  {n:'Shirashima',      lat:34.29, lon:129.17},
-  {n:'Cape Erimo',      lat:41.92, lon:143.25},
-  {n:'Cape Sata',       lat:30.99, lon:130.66},
-  {n:'Pratas Island',   lat:20.70, lon:116.72},
-  {n:'Cape Rachado',    lat:2.41,  lon:101.85},
-  {n:'One Fathom Bank', lat:3.00,  lon:101.37},
-  {n:'Cape Santiago',   lat:13.85, lon:120.63},
+  {n:"Cape Inuboe",        lat:35.71, lon:140.87},
+  {n:"Cape Erimo",         lat:41.92, lon:143.25},
+  {n:"Cape Sata",          lat:30.99, lon:130.66},
+  {n:"Cape Rachado",       lat:2.41,  lon:101.85},
+  {n:"One Fathom Bank",    lat:3.00,  lon:101.37},
   // Africa
-  {n:'Cape Point',      lat:-34.36,lon:18.50},
-  {n:'Green Point',     lat:-33.90,lon:18.38},
-  {n:'Agulhas',         lat:-34.83,lon:20.02},
-  {n:'Bird Island',     lat:-33.84,lon:26.28},
-  {n:'Danger Point',    lat:-34.62,lon:19.35},
-  {n:'Cape Recife',     lat:-34.02,lon:25.42},
-  {n:'Ras Hafun',       lat:10.43, lon:51.41},
-  {n:'Ras Asir',        lat:11.83, lon:51.27},
-  {n:'Ras Banas',       lat:23.90, lon:35.75},
-  {n:'Ras Shukheir',    lat:28.15, lon:33.28},
-  // Middle East / Indian Ocean
-  {n:'Ras al Hadd',     lat:22.53, lon:59.80},
-  {n:'Al Ghanam',       lat:26.67, lon:56.25},
-  {n:'Quoin Island',    lat:26.18, lon:56.43},
-  {n:'Dondra Head',     lat:5.92,  lon:80.59},
-  {n:'Minicoy Island',  lat:8.28,  lon:73.05},
+  {n:"Cape Point",         lat:-34.36,lon:18.50},
+  {n:"Green Point",        lat:-33.90,lon:18.38},
+  {n:"Agulhas",            lat:-34.83,lon:20.02},
+  {n:"Bird Island",        lat:-33.84,lon:26.28},
+  {n:"Danger Point",       lat:-34.62,lon:19.35},
+  {n:"Ras Hafun",          lat:10.43, lon:51.41},
+  {n:"Ras Asir",           lat:11.83, lon:51.27},
+  // Indian Ocean / Middle East
+  {n:"Ras al Hadd",        lat:22.53, lon:59.80},
+  {n:"Dondra Head",        lat:5.92,  lon:80.59},
+  {n:"Minicoy Island",     lat:8.28,  lon:73.05},
 ];
 
-let showLighthouses = false;
+let showLighthouses = true;
 
 function drawLighthousesOnCanvas(ctx, project) {
   if (!showLighthouses) return;
   const z = MAP.currentZoom;
-  // Show lighthouses from zoom 7 (before vessel labels which appear at ~11)
   if (z < 7) return;
 
   const R = z >= 10 ? 4.5 : z >= 8 ? 3.5 : 2.5;
@@ -2527,29 +2506,26 @@ function drawLighthousesOnCanvas(ctx, project) {
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // Outer glow ring
     ctx.beginPath();
     ctx.arc(x, y, R + 2, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,220,0,0.30)';
+    ctx.strokeStyle = "rgba(255,220,0,0.30)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Inner yellow circle
     ctx.beginPath();
     ctx.arc(x, y, R, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffd700';
+    ctx.fillStyle = "#ffd700";
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,200,0,0.6)';
+    ctx.strokeStyle = "rgba(255,200,0,0.6)";
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
-    // Label at zoom >= 9
     if (z >= 9) {
       ctx.globalAlpha = Math.min(1, alpha + 0.1);
-      ctx.font = `bold ${z >= 11 ? 9 : 8}px 'DM Mono', monospace`;
-      ctx.fillStyle = '#ffe566';
-      ctx.textAlign = 'center';
-      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.font = "bold " + (z >= 11 ? 9 : 8) + "px DM Mono, monospace";
+      ctx.fillStyle = "#ffe566";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(0,0,0,0.9)";
       ctx.shadowBlur = 3;
       ctx.fillText(lh.n, x, y - R - 4);
       ctx.shadowBlur = 0;
@@ -2557,6 +2533,7 @@ function drawLighthousesOnCanvas(ctx, project) {
     ctx.restore();
   }
 }
+
 
 let showPorts = true;
 
