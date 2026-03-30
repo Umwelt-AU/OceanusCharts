@@ -528,7 +528,7 @@ def _time_ago(dt):
     return f"{m}m ago" if m<60 else f"{m//60}h {m%60:02d}m ago"
 
 def fetch_alerts():
-    cutoff=datetime.now(timezone.utc)-timedelta(hours=48)
+    cutoff=datetime.now(timezone.utc)-timedelta(days=30)
     results=[]
     urls=[
         "https://msi.nga.mil/api/publications/broadcast-warn?status=active&output=json",
