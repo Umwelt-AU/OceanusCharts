@@ -273,7 +273,7 @@ body.panel-hidden #zoom-ctrl{left:30px}
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
     <div>
       <span style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:.1em;color:#ff4560">⚠ ACTIVE ALERTS</span>
-      <div style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(180,210,225,.35);margin-top:2px">NGA MSI Broadcast Warnings · Last 48 hours</div>
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:rgba(180,210,225,.35);margin-top:2px">NGA MSI Broadcast Warnings · Last 30 days</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <button onclick="alertsFetched=false;fetchAlerts().then(a=>renderAlertList(a||ALERTS))" style="background:none;border:1px solid rgba(0,180,220,.25);border-radius:4px;color:#00d4ff;cursor:pointer;font-family:'DM Mono',monospace;font-size:8px;padding:3px 8px">↻ Refresh</button>
@@ -288,7 +288,7 @@ body.panel-hidden #zoom-ctrl{left:30px}
   <h3>OCEANUS</h3>
   <p style="font-size:11px;color:rgba(180,210,225,.5);margin-top:-5px;margin-bottom:12px;font-family:'DM Mono',monospace;letter-spacing:.08em">Maritime Intelligence Dashboard</p>
   <p><strong style="color:#00d4ff">Live AIS</strong> — Real vessel positions streamed from <a href="https://aisstream.io" target="_blank" style="color:#00d4ff">aisstream.io</a> via GitHub Actions, refreshed every 5 minutes. Click any vessel for name, speed, heading, destination and type.</p>
-  <p><strong style="color:#f0a500">Alerts</strong> — Active maritime safety warnings sourced from the <a href="https://msi.nga.mil/NavWarnings" target="_blank" style="color:#00d4ff">NGA MSI Broadcast Warning</a> system (last 48h). Orange triangles on the map mark alert locations.</p>
+  <p><strong style="color:#f0a500">Alerts</strong> — Active maritime safety warnings sourced from the <a href="https://msi.nga.mil/NavWarnings" target="_blank" style="color:#00d4ff">NGA MSI Broadcast Warning</a> system (last 30 days). Orange triangles on the map mark alert locations.</p>
   <p><strong style="color:#00e5a0">Shipping Lanes</strong> — Major global trade routes across all ocean basins. Toggle in the Overlays panel.</p>
   <p style="font-size:10px;color:rgba(180,210,225,.4)">AIS data via <a href="https://aisstream.io" target="_blank" style="color:#00d4ff">aisstream.io</a> · Alerts via <a href="https://msi.nga.mil" target="_blank" style="color:#00d4ff">NGA MSI</a> · Map tiles © <a href="https://carto.com" target="_blank" style="color:#00d4ff">CARTO</a></p>
   <button class="mcl" onclick="closeModal()">✕ Close</button>
@@ -421,7 +421,7 @@ body.panel-hidden #zoom-ctrl{left:30px}
     <div class="tl">
       <div class="tr on" id="ov-l" onclick="togOv('lanes',this)"><span>📍 Shipping Lanes</span><div class="tsw"></div></div>
       <div class="tr on" id="ov-ports" onclick="togOv('ports',this)"><span>⚓ Ports</span><div class="tsw"></div></div>
-      <div class="tr on" id="ov-lighthouses" onclick="togOv('lighthouses',this)"><span>💛 Lighthouses</span><div class="tsw"></div></div>
+      <div class="tr on" id="ov-lighthouses" onclick="togOv('lighthouses',this)"><span>🔦 Lighthouses</span><div class="tsw"></div></div>
       <div class="tr" id="ov-wind" onclick="togOv('wind',this)"><span>💨 Wind</span><div class="tsw"></div></div>
       <div class="tr" id="ov-clouds" onclick="togOv('clouds',this)"><span>☁ Clouds</span><div class="tsw"></div></div>
       <div class="tr" id="ov-precip" onclick="togOv('precip',this)"><span>🌧 Precipitation</span><div class="tsw"></div></div>
@@ -617,6 +617,7 @@ const MAP = (() => {
   function applyZoom(newZ, fixPx, fixPy){
     newZ=Math.max(2,Math.min(18,Math.round(newZ)));
     if(newZ===zoom) return;
+    setTimeout(()=>{ if(typeof updateOverlayButtonStates==="function") updateOverlayButtonStates(); }, 0);
     // What lat/lng is under the fix point right now?
     const fp=(fixPx!=null&&fixPy!=null) ? unproject(fixPx,fixPy) : {lat,lng};
     // Change zoom
@@ -646,10 +647,12 @@ const MAP = (() => {
       // Change cursor when hovering over a vessel or alert marker
       const rect=el.getBoundingClientRect();
       const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-      const onAlert  = typeof hitTestAlert  === 'function' && hitTestAlert(mx,my,project)  >= 0;
-      const onVessel = typeof hitTestVessel === 'function' && hitTestVessel(mx,my,project) != null;
-      const onLane   = typeof hitTestLane   === 'function' && hitTestLane(mx,my,project)   != null;
-      el.style.cursor = (onAlert || onVessel || onLane) ? 'pointer' : '';
+      const onAlert  = typeof hitTestAlert      === 'function' && hitTestAlert(mx,my,project)      >= 0;
+      const onVessel = typeof hitTestVessel     === 'function' && hitTestVessel(mx,my,project)     != null;
+      const onLane   = typeof hitTestLane       === 'function' && hitTestLane(mx,my,project)       != null;
+      const onPort   = showPorts       && typeof hitTestPort      === 'function' && hitTestPort(mx,my,project)      != null;
+      const onLH     = showLighthouses && typeof hitTestLighthouse === 'function' && hitTestLighthouse(mx,my,project) != null;
+      el.style.cursor = (onAlert || onVessel || onLane || onPort || onLH) ? 'pointer' : '';
       if (onLane && !dragging) {
         showLaneTooltip(hitTestLane(mx,my,project), e.clientX, e.clientY);
       } else if (!onLane) {
@@ -738,6 +741,15 @@ const MAP = (() => {
       const ai = hitTestAlert(mx, my, project);
       if(ai >= 0){ openAlertDetail(ai); return; }
     }
+    // Check ports and lighthouses
+    if (typeof hitTestPort === 'function') {
+      const port = hitTestPort(mx, my, project);
+      if (port) { showPoiDetail(port, 'port'); return; }
+    }
+    if (typeof hitTestLighthouse === 'function') {
+      const lh = hitTestLighthouse(mx, my, project);
+      if (lh) { showPoiDetail(lh, 'lighthouse'); return; }
+    }
     // Check canvas vessels
     if(typeof hitTestVessel === 'function'){
       const mmsi = hitTestVessel(mx, my, project);
@@ -822,6 +834,8 @@ const MAP = (() => {
     zoom(delta){
       // Zoom centred on the map centre
       applyZoom(zoom+delta, W/2, H/2);
+    
+      if(typeof updateOverlayButtonStates==="function") updateOverlayButtonStates();
     },
     setTileStyle(s){ tileStyle=s; cache.clear(); render(); },
     init(){ resize(); },
@@ -967,7 +981,7 @@ function renderAlertList(alerts) {
 
   if (alerts.length === 0) {
     list.innerHTML = '<div style="text-align:center;padding:28px;font-family:DM Mono,monospace;font-size:10px;color:rgba(180,210,225,.4)">'
-      + (alertsFetched ? '✓ No NGA warnings in the last 48 hours' : '⟳ Loading…')
+      + (alertsFetched ? '✓ No NGA warnings in the last 30 days' : '⟳ Loading…')
       + '</div>';
     return;
   }
@@ -1272,6 +1286,78 @@ function drawVesselsOnCanvas(ctx, project) {
 }
 
 // Hit test — returns mmsi string or null
+
+// ── Port / Lighthouse hit testing ────────────────────────────
+function hitTestPort(mx, my, project) {
+  if (!showPorts) return null;
+  const z = MAP.currentZoom;
+  let best = null, bestD = 14;
+  for (const p of PORTS) {
+    if (p.t === 1 && z < 3)  continue;
+    if (p.t === 2 && z < 5)  continue;
+    if (p.t === 3 && z < 7)  continue;
+    const {x, y} = project(p.lat, p.lon);
+    const d = Math.hypot(mx - x, my - y);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return best;
+}
+
+function hitTestLighthouse(mx, my, project) {
+  if (!showLighthouses) return null;
+  const z = MAP.currentZoom;
+  if (z < 7) return null;
+  let best = null, bestD = 14;
+  for (const lh of LIGHTHOUSES) {
+    const {x, y} = project(lh.lat, lh.lon);
+    const d = Math.hypot(mx - x, my - y);
+    if (d < bestD) { bestD = d; best = lh; }
+  }
+  return best;
+}
+
+function showPoiDetail(item, type) {
+  const dp = document.getElementById('dp');
+  const dpn = document.getElementById('dp-n');
+  const dpt = document.getElementById('dp-t');
+  const dpb = document.getElementById('dp-b');
+  if (!dp || !dpn || !dpt || !dpb) return;
+
+  const icon = type === 'port' ? '⚓' : '🔦';
+  const typeLabel = type === 'port'
+    ? (item.t === 1 ? 'Major Port' : item.t === 2 ? 'Regional Port' : 'Local Port')
+    : 'Lighthouse';
+  const col = type === 'port' ? '#00d4ff' : '#ffd700';
+
+  dpn.textContent = item.n;
+  dpt.textContent = icon + ' ' + typeLabel + (item.country ? ' · ' + item.country : '');
+  dpt.style.color = col;
+
+  const r = (label, val, color) =>
+    '<div class="df"><span class="fl">' + label + '</span>'
+    + '<span class="fv' + (color ? ' fvh" style="color:' + color + '"' : '"') + '>'
+    + val + '</span></div>';
+
+  const latStr = Math.abs(item.lat).toFixed(4) + (item.lat >= 0 ? '° N' : '° S');
+  const lonStr = Math.abs(item.lon).toFixed(4) + (item.lon >= 0 ? '° E' : '° W');
+
+  dpb.innerHTML =
+    r('Latitude',  latStr,  null) +
+    r('Longitude', lonStr,  null) +
+    (item.country  ? r('Country', item.country, null) : '') +
+    (item.founded  ? r('Established', item.founded + (item.founded < 1000 ? ' AD' : ''), '#00e5a0') : '') +
+    (item.notes    ? '<div style="margin-top:10px;padding:9px 11px;background:rgba(0,180,220,.06);border-radius:6px;border:1px solid rgba(0,180,220,.14);font-family:DM Mono,monospace;font-size:8.5px;color:rgba(180,210,225,.75);line-height:1.55">'
+      + item.notes + '</div>' : '') +
+    '<div style="margin-top:10px">'
+    + '<button onclick="MAP.flyTo(' + item.lat + ',' + item.lon + ',12)" style="width:100%;padding:7px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.25);border-radius:6px;color:#00d4ff;font-family:DM Mono,monospace;font-size:8.5px;cursor:pointer;letter-spacing:.05em">🗺 FLY TO</button>'
+    + '</div>';
+
+  // Show selection ring
+  if (typeof showRing === 'function') showRing(item.lat, item.lon, col);
+
+  dp.classList.add('open');
+}
+
 function hitTestVessel(mx, my, project) {
   let best = null, bestD = 12; // 12px hit radius
   for (const [mmsi, v] of liveVessels) {
@@ -2314,70 +2400,57 @@ function startMotionAnim() {
 //  tier: 1=megaport (zoom≥3), 2=major (zoom≥5), 3=regional (zoom≥7)
 // ════════════════════════════════════════════════════════
 const PORTS = [
-  // Tier 1 — world's largest ports / key chokepoints
-  {n:'Shanghai',       lat:31.23, lon:121.47, t:1},
-  {n:'Singapore',      lat:1.26,  lon:103.82, t:1},
-  {n:'Rotterdam',      lat:51.94, lon:4.13,   t:1},
-  {n:'Ningbo-Zhoushan',lat:29.87, lon:121.55, t:1},
-  {n:'Guangzhou',      lat:23.10, lon:113.26, t:1},
-  {n:'Busan',          lat:35.10, lon:129.04, t:1},
-  {n:'Hong Kong',      lat:22.29, lon:114.17, t:1},
-  {n:'Qingdao',        lat:36.07, lon:120.33, t:1},
-  {n:'Tianjin',        lat:39.00, lon:117.72, t:1},
-  {n:'Dubai (Jebel Ali)',lat:24.98,lon:55.07, t:1},
-  {n:'Port Klang',     lat:3.00,  lon:101.40, t:1},
-  {n:'Antwerp',        lat:51.27, lon:4.40,   t:1},
-  {n:'Los Angeles',    lat:33.74, lon:-118.27,t:1},
-  {n:'Hamburg',        lat:53.55, lon:9.97,   t:1},
-  {n:'Tanjung Pelepas',lat:1.37,  lon:103.55, t:1},
-
-  // Tier 2 — major regional hubs
-  {n:'New York',       lat:40.67, lon:-74.04, t:2},
-  {n:'Tokyo / Yokohama',lat:35.44,lon:139.64, t:2},
-  {n:'Kaohsiung',      lat:22.62, lon:120.28, t:2},
-  {n:'Colombo',        lat:6.96,  lon:79.85,  t:2},
-  {n:'Mumbai',         lat:18.93, lon:72.84,  t:2},
-  {n:'Santos',         lat:-23.95,lon:-46.33, t:2},
-  {n:'Suez',           lat:29.97, lon:32.55,  t:2},
-  {n:'Port Said',      lat:31.26, lon:32.30,  t:2},
-  {n:'Aden',           lat:12.78, lon:45.03,  t:2},
-  {n:'Felixstowe',     lat:51.96, lon:1.35,   t:2},
-  {n:'Valencia',       lat:39.44, lon:-0.31,  t:2},
-  {n:'Algeciras',      lat:36.12, lon:-5.45,  t:2},
-  {n:'Cape Town',      lat:-33.92,lon:18.43,  t:2},
-  {n:'Sydney',         lat:-33.86,lon:151.20, t:2},
-  {n:'Melbourne',      lat:-37.83,lon:144.93, t:2},
-  {n:'Durban',         lat:-29.88,lon:31.04,  t:2},
-  {n:'Houston',        lat:29.74, lon:-95.27, t:2},
-  {n:'Vancouver',      lat:49.29, lon:-123.10,t:2},
-  {n:'Le Havre',       lat:49.49, lon:0.11,   t:2},
-  {n:'Piraeus',        lat:37.95, lon:23.63,  t:2},
-  {n:'Karachi',        lat:24.84, lon:66.99,  t:2},
-
-  // Tier 3 — regional ports
-  {n:'Osaka',          lat:34.65, lon:135.19, t:3},
-  {n:'Kobe',           lat:34.69, lon:135.20, t:3},
-  {n:'Xiamen',         lat:24.48, lon:118.08, t:3},
-  {n:'Shenzhen',       lat:22.53, lon:114.05, t:3},
-  {n:'Laem Chabang',   lat:13.08, lon:100.88, t:3},
-  {n:'Jakarta',        lat:-6.10, lon:106.88, t:3},
-  {n:'Chittagong',     lat:22.34, lon:91.82,  t:3},
-  {n:'Dammam',         lat:26.43, lon:50.10,  t:3},
-  {n:'Mombasa',        lat:-4.05, lon:39.67,  t:3},
-  {n:'Dar es Salaam',  lat:-6.82, lon:39.29,  t:3},
-  {n:'Casablanca',     lat:33.60, lon:-7.62,  t:3},
-  {n:'Lagos',          lat:6.45,  lon:3.40,   t:3},
-  {n:'Dakar',          lat:14.69, lon:-17.44, t:3},
-  {n:'Gdansk',         lat:54.35, lon:18.65,  t:3},
-  {n:'Genoa',          lat:44.41, lon:8.93,   t:3},
-  {n:'Marseille',      lat:43.30, lon:5.37,   t:3},
-  {n:'Barcelona',      lat:41.35, lon:2.18,   t:3},
-  {n:'Buenos Aires',   lat:-34.61,lon:-58.37, t:3},
-  {n:'Valparaíso',     lat:-33.04,lon:-71.62, t:3},
-  {n:'Callao',         lat:-12.06,lon:-77.15, t:3},
-  {n:'Auckland',       lat:-36.85,lon:174.77, t:3},
-  {n:'Brisbane',       lat:-27.47,lon:153.03, t:3},
-  {n:'Fremantle',      lat:-32.05,lon:115.75, t:3},
+  // Tier 1 — world's largest / key chokepoints
+  {n:"Shanghai",          lat:31.23,  lon:121.47, t:1, country:"China",        founded:1843, notes:"World's busiest container port by throughput."},
+  {n:"Singapore",         lat:1.26,   lon:103.82, t:1, country:"Singapore",    founded:1819, notes:"Major transshipment hub; world's 2nd busiest container port."},
+  {n:"Rotterdam",         lat:51.94,  lon:4.13,   t:1, country:"Netherlands",  founded:1340, notes:"Largest port in Europe; primary gateway to Northern European markets."},
+  {n:"Ningbo-Zhoushan",   lat:29.87,  lon:121.55, t:1, country:"China",        founded:1984, notes:"World's busiest port by cargo tonnage."},
+  {n:"Guangzhou",         lat:23.10,  lon:113.26, t:1, country:"China",        founded:1685, notes:"Key Pearl River Delta gateway; one of China's oldest trading ports."},
+  {n:"Busan",             lat:35.10,  lon:129.04, t:1, country:"South Korea",  founded:1876, notes:"South Korea's main port; major transshipment hub for Northeast Asia."},
+  {n:"Hong Kong",         lat:22.29,  lon:114.17, t:1, country:"Hong Kong",    founded:1841, notes:"Historic free port; one of the world's busiest container terminals."},
+  {n:"Qingdao",           lat:36.07,  lon:120.33, t:1, country:"China",        founded:1897, notes:"Major bulk and container port in northern China."},
+  {n:"Tianjin",           lat:39.00,  lon:117.72, t:1, country:"China",        founded:1860, notes:"Primary port for Beijing and northern China."},
+  {n:"Dubai (Jebel Ali)", lat:24.98,  lon:55.07,  t:1, country:"UAE",          founded:1979, notes:"Largest man-made harbour in the world; key Middle East hub."},
+  {n:"Port Klang",        lat:3.00,   lon:101.38, t:1, country:"Malaysia",     founded:1880, notes:"Malaysia's busiest port and main gateway to Kuala Lumpur."},
+  {n:"Antwerp",           lat:51.26,  lon:4.40,   t:1, country:"Belgium",      founded:1863, notes:"Second largest European port; major chemicals and petrochemicals hub."},
+  {n:"Kaohsiung",         lat:22.62,  lon:120.27, t:1, country:"Taiwan",       founded:1895, notes:"Taiwan's largest port and a major transshipment centre."},
+  {n:"Dalian",            lat:38.92,  lon:121.65, t:1, country:"China",        founded:1899, notes:"China's major northeastern port and oil terminal."},
+  {n:"Los Angeles",       lat:33.74,  lon:-118.27,t:1, country:"USA",          founded:1907, notes:"Busiest container port in the Western Hemisphere."},
+  {n:"Long Beach",        lat:33.77,  lon:-118.19,t:1, country:"USA",          founded:1911, notes:"Second busiest US port; forms a mega-complex with Los Angeles."},
+  {n:"Hamburg",           lat:53.55,  lon:9.97,   t:1, country:"Germany",      founded:1189, notes:"Germany's largest port; gateway to Central and Eastern Europe."},
+  {n:"Tanjung Pelepas",   lat:1.36,   lon:103.55, t:1, country:"Malaysia",     founded:1999, notes:"Modern transshipment port at the tip of the Malay Peninsula."},
+  {n:"Xiamen",            lat:24.47,  lon:118.08, t:1, country:"China",        founded:1843, notes:"Key port for cross-strait trade with Taiwan."},
+  {n:"Laem Chabang",      lat:13.09,  lon:100.88, t:1, country:"Thailand",     founded:1991, notes:"Thailand's largest deep-water port and gateway to Bangkok."},
+  {n:"Valencia",          lat:39.45,  lon:-0.33,  t:2, country:"Spain",        founded:138,  notes:"Spain's busiest container port; major Mediterranean hub."},
+  {n:"Tanjung Priok",     lat:-6.10,  lon:106.88, t:2, country:"Indonesia",    founded:1883, notes:"Indonesia's busiest port; gateway to Jakarta."},
+  {n:"Colombo",           lat:6.95,   lon:79.85,  t:2, country:"Sri Lanka",    founded:1875, notes:"Key transshipment hub at the crossroads of Indian Ocean shipping lanes."},
+  {n:"Jeddah",            lat:21.49,  lon:39.18,  t:2, country:"Saudi Arabia", founded:1928, notes:"Saudi Arabia's main Red Sea port; gateway to Mecca."},
+  {n:"New York / New Jersey",lat:40.67,lon:-74.07,t:2, country:"USA",          founded:1626, notes:"Busiest port on the US East Coast."},
+  {n:"Savannah",          lat:31.98,  lon:-81.09, t:2, country:"USA",          founded:1733, notes:"Fastest growing US port; major automotive and retail gateway."},
+  {n:"Felixstowe",        lat:51.96,  lon:1.35,   t:2, country:"UK",           founded:1875, notes:"UK's largest container port."},
+  {n:"Piraeus",           lat:37.94,  lon:23.63,  t:2, country:"Greece",       founded:493,  notes:"Greece's main port; major Mediterranean gateway; operated by COSCO."},
+  {n:"Barcelona",         lat:41.35,  lon:2.16,   t:2, country:"Spain",        founded:1477, notes:"Major cruise and container port on Spain's northeast coast."},
+  {n:"Durban",            lat:-29.87, lon:31.03,  t:2, country:"South Africa", founded:1824, notes:"Sub-Saharan Africa's busiest container port."},
+  {n:"Suez",              lat:29.97,  lon:32.55,  t:2, country:"Egypt",        founded:1869, notes:"Southern entry to the Suez Canal; critical global chokepoint."},
+  {n:"Port Said",         lat:31.26,  lon:32.30,  t:2, country:"Egypt",        founded:1859, notes:"Northern entry to the Suez Canal."},
+  {n:"Aden",              lat:12.78,  lon:45.03,  t:2, country:"Yemen",        founded:1839, notes:"Strategic port at Bab-el-Mandeb; major bunkering location."},
+  {n:"Sydney",            lat:-33.86, lon:151.21, t:2, country:"Australia",    founded:1788, notes:"Australia's oldest port; key passenger and coastal hub."},
+  {n:"Melbourne",         lat:-37.82, lon:144.93, t:2, country:"Australia",    founded:1835, notes:"Australia's busiest container port."},
+  {n:"Fremantle",         lat:-32.05, lon:115.75, t:3, country:"Australia",    founded:1829, notes:"Main port for Western Australia; gateway to Perth."},
+  {n:"Mombasa",           lat:-4.06,  lon:39.67,  t:3, country:"Kenya",        founded:1498, notes:"East Africa's largest and most active port."},
+  {n:"Dar es Salaam",     lat:-6.82,  lon:39.30,  t:3, country:"Tanzania",     founded:1862, notes:"Tanzania's main port and regional gateway."},
+  {n:"Cape Town",         lat:-33.91, lon:18.42,  t:3, country:"South Africa", founded:1652, notes:"South Africa's second largest port; major cruise destination."},
+  {n:"Mumbai",            lat:18.94,  lon:72.85,  t:2, country:"India",        founded:1736, notes:"India's largest port; handles one-fifth of India's seaborne trade."},
+  {n:"Chennai",           lat:13.08,  lon:80.29,  t:2, country:"India",        founded:1639, notes:"India's second largest container port; first artificial port in India."},
+  {n:"Chittagong",        lat:22.34,  lon:91.83,  t:2, country:"Bangladesh",   founded:1887, notes:"Bangladesh's main seaport; handles 90% of the country's trade."},
+  {n:"Karachi",           lat:24.85,  lon:67.02,  t:2, country:"Pakistan",     founded:1854, notes:"Pakistan's largest and most important seaport."},
+  {n:"Santos",            lat:-23.96, lon:-46.33, t:2, country:"Brazil",       founded:1546, notes:"Largest port in Latin America; Brazil's main export gateway."},
+  {n:"Buenos Aires",      lat:-34.60, lon:-58.37, t:2, country:"Argentina",    founded:1580, notes:"Argentina's main port; gateway to the Rio de la Plata basin."},
+  {n:"Callao",            lat:-12.06, lon:-77.14, t:3, country:"Peru",         founded:1537, notes:"Peru's main port; adjacent to Lima."},
+  {n:"Colon",             lat:9.36,   lon:-79.90, t:2, country:"Panama",       founded:1850, notes:"Atlantic entrance to the Panama Canal; major free trade zone."},
+  {n:"Balboa",            lat:8.96,   lon:-79.57, t:2, country:"Panama",       founded:1519, notes:"Pacific entrance to the Panama Canal."},
+  {n:"Vancouver",         lat:49.28,  lon:-123.12,t:2, country:"Canada",       founded:1886, notes:"Canada's busiest port; major gateway for Asia-Pacific trade."},
+  {n:"Seattle / Tacoma",  lat:47.60,  lon:-122.34,t:2, country:"USA",          founded:1853, notes:"Major Pacific Northwest container gateway."},
 ];
 
 
@@ -2385,108 +2458,91 @@ const PORTS = [
 //  LIGHTHOUSES — major navigational lights worldwide
 // ═══════════════════════════════════════════════════════
 const LIGHTHOUSES = [
-  // Europe
-  {n:"Eddystone",          lat:50.17, lon:-4.27},
-  {n:"Bishop Rock",        lat:49.87, lon:-6.44},
-  {n:"Wolf Rock",          lat:49.95, lon:-5.80},
-  {n:"Longships",          lat:50.05, lon:-5.75},
-  {n:"Fastnet Rock",       lat:51.37, lon:-9.60},
-  {n:"Cape Clear",         lat:51.43, lon:-9.50},
-  {n:"Hook Head",          lat:52.12, lon:-6.92},
-  {n:"Loop Head",          lat:52.56, lon:-9.93},
-  {n:"Mizen Head",         lat:51.45, lon:-9.81},
-  {n:"Slyne Head",         lat:53.40, lon:-10.24},
-  {n:"Tory Island",        lat:55.27, lon:-8.23},
-  {n:"Malin Head",         lat:55.38, lon:-7.36},
-  {n:"Mull of Kintyre",    lat:55.31, lon:-5.81},
-  {n:"Ardnamurchan",       lat:56.72, lon:-6.23},
-  {n:"Cape Wrath",         lat:58.63, lon:-5.00},
-  {n:"Dunnet Head",        lat:58.67, lon:-3.38},
-  {n:"Noss Head",          lat:58.47, lon:-3.05},
-  {n:"Sumburgh Head",      lat:59.85, lon:-1.27},
-  {n:"Muckle Flugga",      lat:60.85, lon:-0.88},
-  {n:"Flamborough Head",   lat:54.12, lon:-0.08},
-  {n:"Dungeness",          lat:50.92, lon:0.98},
-  {n:"South Foreland",     lat:51.14, lon:1.37},
-  {n:"Cap Gris-Nez",       lat:50.87, lon:1.58},
-  {n:"Barfleur",           lat:49.68, lon:-1.26},
-  {n:"Cap de la Hague",    lat:49.73, lon:-1.95},
-  {n:"Ar-Men",             lat:47.80, lon:-5.10},
-  {n:"Creac h",            lat:48.46, lon:-5.08},
-  {n:"Ile Vierge",         lat:48.63, lon:-4.57},
-  {n:"Pointe du Raz",      lat:48.02, lon:-4.73},
-  {n:"Cabo Finisterre",    lat:42.88, lon:-9.27},
-  {n:"Cabo Roca",          lat:38.78, lon:-9.50},
-  {n:"Cabo de Sao Vicente",lat:37.02, lon:-8.99},
-  {n:"Cabo Trafalgar",     lat:36.18, lon:-6.03},
-  {n:"Tarifa",             lat:36.01, lon:-5.61},
-  {n:"Europa Point",       lat:36.11, lon:-5.35},
-  {n:"Cabo Nao",           lat:38.73, lon:0.24},
-  {n:"Cap de Creus",       lat:42.32, lon:3.32},
-  {n:"Cap Bear",           lat:42.52, lon:3.13},
-  {n:"Ile Plane",          lat:43.20, lon:5.23},
-  {n:"Cap Corse",          lat:43.00, lon:9.35},
-  {n:"Cap Bon",            lat:37.08, lon:11.05},
-  {n:"Capo Spartivento",   lat:37.92, lon:15.13},
-  {n:"Capo Passero",       lat:36.68, lon:15.15},
-  {n:"Capo Colonna",       lat:39.03, lon:17.20},
-  {n:"Punta Stilo",        lat:38.44, lon:16.57},
-  {n:"Cape Matapan",       lat:36.39, lon:22.48},
-  {n:"Cape Sounion",       lat:37.65, lon:24.02},
-  {n:"Bosphorus South",    lat:41.02, lon:29.00},
-  {n:"Bosphorus North",    lat:41.22, lon:29.12},
-  // North America
-  {n:"Cape Race",          lat:46.66, lon:-53.08},
-  {n:"Cape Sable",         lat:43.43, lon:-65.62},
-  {n:"Cape Cod",           lat:42.07, lon:-70.06},
-  {n:"Montauk Point",      lat:41.07, lon:-71.86},
-  {n:"Cape Hatteras",      lat:35.25, lon:-75.53},
-  {n:"Cape Fear",          lat:33.84, lon:-77.96},
-  {n:"Cape Canaveral",     lat:28.46, lon:-80.54},
-  {n:"Key West",           lat:24.55, lon:-81.80},
-  {n:"Dry Tortugas",       lat:24.63, lon:-82.91},
-  {n:"Cape Flattery",      lat:48.38, lon:-124.73},
-  {n:"Point Reyes",        lat:38.00, lon:-122.99},
-  {n:"Point Conception",   lat:34.45, lon:-120.47},
-  {n:"Point Loma",         lat:32.67, lon:-117.24},
+  // British Isles
+  {n:"Eddystone",         lat:50.17,  lon:-4.27,  country:"UK",          founded:1698, notes:"One of the world's most famous rock lighthouses; rebuilt four times."},
+  {n:"Bishop Rock",       lat:49.87,  lon:-6.44,  country:"UK",          founded:1858, notes:"Britain's most westerly lighthouse; marks the Scilly Isles."},
+  {n:"Wolf Rock",         lat:49.95,  lon:-5.80,  country:"UK",          founded:1870, notes:"Isolated granite tower 9 miles from Land's End."},
+  {n:"Longships",         lat:50.05,  lon:-5.75,  country:"UK",          founded:1795, notes:"Marks treacherous rocks off Land's End, Cornwall."},
+  {n:"Fastnet Rock",      lat:51.37,  lon:-9.60,  country:"Ireland",     founded:1904, notes:"Ireland's most southerly point; famous ocean race waypoint."},
+  {n:"Hook Head",         lat:52.12,  lon:-6.92,  country:"Ireland",     founded:1172, notes:"One of the oldest operational lighthouses in the world."},
+  {n:"Mizen Head",        lat:51.45,  lon:-9.81,  country:"Ireland",     founded:1910, notes:"Ireland's most south-westerly point."},
+  {n:"Malin Head",        lat:55.38,  lon:-7.36,  country:"Ireland",     founded:1864, notes:"Ireland's most northerly point."},
+  {n:"Mull of Kintyre",   lat:55.31,  lon:-5.81,  country:"UK",          founded:1788, notes:"Marks the tip of the Kintyre Peninsula; treacherous currents."},
+  {n:"Cape Wrath",        lat:58.63,  lon:-5.00,  country:"UK",          founded:1828, notes:"Mainland Britain's north-westernmost point."},
+  {n:"Dunnet Head",       lat:58.67,  lon:-3.38,  country:"UK",          founded:1831, notes:"Most northerly point of mainland Britain."},
+  {n:"Sumburgh Head",     lat:59.85,  lon:-1.27,  country:"UK",          founded:1821, notes:"Southernmost tip of Shetland; strong tidal races."},
+  {n:"Muckle Flugga",     lat:60.85,  lon:-0.88,  country:"UK",          founded:1854, notes:"Britain's most northerly lighthouse; designed by Thomas Stevenson."},
+  {n:"Flamborough Head",  lat:54.12,  lon:-0.08,  country:"UK",          founded:1806, notes:"Chalk headland on the Yorkshire coast; strong tides."},
+  {n:"Dungeness",         lat:50.92,  lon:0.98,   country:"UK",          founded:1615, notes:"Largest shingle spit in Europe; multiple lighthouses built over time."},
+  {n:"South Foreland",    lat:51.14,  lon:1.37,   country:"UK",          founded:1634, notes:"First lighthouse to use an electric light (1858)."},
+  // France & Atlantic Europe
+  {n:"Cap Gris-Nez",      lat:50.87,  lon:1.58,   country:"France",      founded:1837, notes:"France's closest point to England; busiest shipping lane in the world."},
+  {n:"Barfleur",          lat:49.68,  lon:-1.26,  country:"France",      founded:1775, notes:"One of the tallest lighthouses in France at 71m."},
+  {n:"Cap de la Hague",   lat:49.73,  lon:-1.95,  country:"France",      founded:1837, notes:"Marks the Alderney Race; one of Europe's strongest tidal currents."},
+  {n:"Ar-Men",            lat:47.80,  lon:-5.10,  country:"France",      founded:1881, notes:"Known as 'hell of hells'; took 14 years to build on an exposed rock."},
+  {n:"Creac h",           lat:48.46,  lon:-5.08,  country:"France",      founded:1863, notes:"One of the most powerful lighthouses in the world; on Ouessant Island."},
+  {n:"Ile Vierge",        lat:48.63,  lon:-4.57,  country:"France",      founded:1902, notes:"Tallest masonry lighthouse in Europe at 82.5m."},
+  {n:"Cabo Finisterre",   lat:42.88,  lon:-9.27,  country:"Spain",       founded:1853, notes:"Spain's westernmost point; once believed to be the edge of the world."},
+  {n:"Cabo de Sao Vicente",lat:37.02, lon:-8.99,  country:"Portugal",    founded:1515, notes:"Southwesternmost point of continental Europe."},
+  {n:"Cabo Trafalgar",    lat:36.18,  lon:-6.03,  country:"Spain",       founded:1860, notes:"Scene of the 1805 Battle of Trafalgar."},
+  {n:"Tarifa",            lat:36.01,  lon:-5.61,  country:"Spain",       founded:1807, notes:"Marks the narrowest point of the Strait of Gibraltar."},
+  {n:"Europa Point",      lat:36.11,  lon:-5.35,  country:"Gibraltar",   founded:1841, notes:"Marks the southern tip of Gibraltar; visible from Morocco."},
+  // Mediterranean
+  {n:"Cap de Creus",      lat:42.32,  lon:3.32,   country:"Spain",       founded:1853, notes:"Easternmost point of the Iberian Peninsula."},
+  {n:"Cap Corse",         lat:43.00,  lon:9.35,   country:"France",      founded:1843, notes:"Marks the northern tip of Corsica."},
+  {n:"Capo Spartivento",  lat:37.92,  lon:15.13,  country:"Italy",       founded:1859, notes:"Marks the toe of Italy's boot; entrance to the Strait of Messina."},
+  {n:"Capo Passero",      lat:36.68,  lon:15.15,  country:"Italy",       founded:1859, notes:"Southernmost point of Sicily."},
+  {n:"Cape Matapan",      lat:36.39,  lon:22.48,  country:"Greece",      founded:1882, notes:"Southernmost point of mainland Greece and the Peloponnese."},
+  {n:"Cape Sounion",      lat:37.65,  lon:24.02,  country:"Greece",      founded:1906, notes:"Site of the ancient Temple of Poseidon; entrance to the Aegean."},
+  {n:"Bosphorus South",   lat:41.02,  lon:29.00,  country:"Turkey",      founded:1856, notes:"Marks the southern entrance to the Bosphorus Strait."},
+  {n:"Bosphorus North",   lat:41.22,  lon:29.12,  country:"Turkey",      founded:1855, notes:"Marks the northern entrance to the Bosphorus Strait."},
+  // North America — East
+  {n:"Cape Race",         lat:46.66,  lon:-53.08, country:"Canada",      founded:1856, notes:"First landfall for transatlantic vessels arriving from Europe."},
+  {n:"Cape Sable",        lat:43.43,  lon:-65.62, country:"Canada",      founded:1861, notes:"Southernmost tip of Nova Scotia; notorious for fog and storms."},
+  {n:"Cape Cod",          lat:42.07,  lon:-70.06, country:"USA",         founded:1797, notes:"Marks the elbow of Cape Cod; one of the most powerful in New England."},
+  {n:"Montauk Point",     lat:41.07,  lon:-71.86, country:"USA",         founded:1797, notes:"New York's oldest lighthouse; marks the eastern tip of Long Island."},
+  {n:"Cape Hatteras",     lat:35.25,  lon:-75.53, country:"USA",         founded:1802, notes:"Tallest brick lighthouse in the US at 59m; marks the 'Graveyard of the Atlantic'."},
+  {n:"Cape Fear",         lat:33.84,  lon:-77.96, country:"USA",         founded:1817, notes:"Marks the treacherous Frying Pan Shoals off North Carolina."},
+  {n:"Cape Canaveral",    lat:28.46,  lon:-80.54, country:"USA",         founded:1848, notes:"Adjacent to the famous NASA launch facility."},
+  {n:"Key West",          lat:24.55,  lon:-81.80, country:"USA",         founded:1825, notes:"Southernmost lighthouse in the continental US."},
+  // North America — West
+  {n:"Cape Flattery",     lat:48.38,  lon:-124.73,country:"USA",         founded:1857, notes:"Marks the northwest corner of the contiguous US."},
+  {n:"Point Reyes",       lat:38.00,  lon:-122.99,country:"USA",         founded:1870, notes:"One of the foggiest and windiest spots on the US Pacific Coast."},
+  {n:"Point Conception",  lat:34.45,  lon:-120.47,country:"USA",         founded:1856, notes:"Divides Southern and Central California; notorious for rough seas."},
+  {n:"Point Loma",        lat:32.67,  lon:-117.24,country:"USA",         founded:1855, notes:"The old lighthouse is now a national monument; second tallest in the US."},
   // Pacific
-  {n:"Diamond Head",       lat:21.25, lon:-157.81},
-  {n:"Makapuu",            lat:21.31, lon:-157.65},
-  // Australia / NZ
-  {n:"Cape Otway",         lat:-38.86,lon:143.51},
-  {n:"Gabo Island",        lat:-37.57,lon:149.92},
-  {n:"Cape Byron",         lat:-28.64,lon:153.64},
-  {n:"Sandy Cape",         lat:-24.70,lon:153.22},
-  {n:"Cape Moreton",       lat:-27.03,lon:153.47},
-  {n:"Cape Don",           lat:-11.31,lon:131.77},
-  {n:"Cape Leeuwin",       lat:-34.37,lon:115.14},
-  {n:"Rottnest Island",    lat:-32.00,lon:115.50},
-  {n:"Point Moore",        lat:-28.85,lon:114.60},
-  {n:"Cape Willoughby",    lat:-35.84,lon:138.00},
-  {n:"Cape Borda",         lat:-35.76,lon:136.59},
-  {n:"Cape Bruny",         lat:-43.49,lon:147.14},
-  {n:"Tasman Island",      lat:-43.23,lon:148.00},
-  {n:"Maatsuyker",         lat:-43.65,lon:146.27},
-  {n:"Cape Egmont",        lat:-39.28,lon:173.75},
-  {n:"Farewell Spit",      lat:-40.55,lon:172.67},
+  {n:"Diamond Head",      lat:21.25,  lon:-157.81,country:"USA",         founded:1899, notes:"Marks the entrance to Honolulu Harbour; iconic Hawaii landmark."},
+  {n:"Makapuu",           lat:21.31,  lon:-157.65,country:"USA",         founded:1909, notes:"Hawaii's most powerful lighthouse; guides traffic into Honolulu."},
+  // Australia
+  {n:"Cape Otway",        lat:-38.86, lon:143.51, country:"Australia",   founded:1848, notes:"Victoria's oldest lighthouse; marks the entrance to Bass Strait."},
+  {n:"Gabo Island",       lat:-37.57, lon:149.92, country:"Australia",   founded:1862, notes:"Marks the SE corner of mainland Australia; pink granite tower."},
+  {n:"Cape Byron",        lat:-28.64, lon:153.64, country:"Australia",   founded:1901, notes:"Australia's most easterly point; highest lighthouse on the continent."},
+  {n:"Sandy Cape",        lat:-24.70, lon:153.22, country:"Australia",   founded:1870, notes:"Marks the northern tip of Fraser Island, Queensland."},
+  {n:"Cape Moreton",      lat:-27.03, lon:153.47, country:"Australia",   founded:1857, notes:"Queensland's oldest lighthouse; marks Moreton Bay entrance."},
+  {n:"Cape Don",          lat:-11.31, lon:131.77, country:"Australia",   founded:1916, notes:"Marks the western approach to the Dundas Strait, NT."},
+  {n:"Cape Leeuwin",      lat:-34.37, lon:115.14, country:"Australia",   founded:1895, notes:"Marks where the Indian and Southern Oceans meet; SW tip of Australia."},
+  {n:"Rottnest Island",   lat:-32.00, lon:115.50, country:"Australia",   founded:1849, notes:"WA's first permanent lighthouse; guides traffic into Fremantle."},
+  {n:"Cape Willoughby",   lat:-35.84, lon:138.00, country:"Australia",   founded:1852, notes:"SA's first lighthouse; marks Kangaroo Island's eastern tip."},
+  {n:"Cape Bruny",        lat:-43.49, lon:147.14, country:"Australia",   founded:1838, notes:"Tasmania's oldest lighthouse; marks Bruny Island."},
+  {n:"Tasman Island",     lat:-43.23, lon:148.00, country:"Australia",   founded:1906, notes:"Tasmania's most powerful lighthouse; stands 300m above the sea."},
+  {n:"Cape Egmont",       lat:-39.28, lon:173.75, country:"New Zealand", founded:1877, notes:"Marks the western tip of the Taranaki region, NZ."},
+  {n:"Farewell Spit",     lat:-40.55, lon:172.67, country:"New Zealand", founded:1870, notes:"Marks the northern tip of South Island, NZ."},
   // Asia
-  {n:"Cape Inuboe",        lat:35.71, lon:140.87},
-  {n:"Cape Erimo",         lat:41.92, lon:143.25},
-  {n:"Cape Sata",          lat:30.99, lon:130.66},
-  {n:"Cape Rachado",       lat:2.41,  lon:101.85},
-  {n:"One Fathom Bank",    lat:3.00,  lon:101.37},
+  {n:"Cape Inuboe",       lat:35.71,  lon:140.87, country:"Japan",       founded:1874, notes:"Japan's oldest western-style lighthouse; Chiba Prefecture."},
+  {n:"Cape Erimo",        lat:41.92,  lon:143.25, country:"Japan",       founded:1889, notes:"Marks the southernmost tip of Hokkaido."},
+  {n:"Cape Sata",         lat:30.99,  lon:130.66, country:"Japan",       founded:1871, notes:"Southernmost point of Kyushu; entrance to Osumi Strait."},
+  {n:"Cape Rachado",      lat:2.41,   lon:101.85, country:"Malaysia",    founded:1528, notes:"One of the oldest lighthouses in Southeast Asia; built by the Portuguese."},
+  {n:"One Fathom Bank",   lat:3.00,   lon:101.37, country:"Malaysia",    founded:1883, notes:"Offshore lighthouse in the Strait of Malacca."},
   // Africa
-  {n:"Cape Point",         lat:-34.36,lon:18.50},
-  {n:"Green Point",        lat:-33.90,lon:18.38},
-  {n:"Agulhas",            lat:-34.83,lon:20.02},
-  {n:"Bird Island",        lat:-33.84,lon:26.28},
-  {n:"Danger Point",       lat:-34.62,lon:19.35},
-  {n:"Ras Hafun",          lat:10.43, lon:51.41},
-  {n:"Ras Asir",           lat:11.83, lon:51.27},
+  {n:"Cape Point",        lat:-34.36, lon:18.50,  country:"South Africa",founded:1919, notes:"Marks the southwestern tip of Africa; near the Cape of Good Hope."},
+  {n:"Green Point",       lat:-33.90, lon:18.38,  country:"South Africa",founded:1824, notes:"Cape Town's first lighthouse; one of Africa's oldest."},
+  {n:"Agulhas",           lat:-34.83, lon:20.02,  country:"South Africa",founded:1849, notes:"Marks Africa's southernmost point; divides Atlantic and Indian Oceans."},
+  {n:"Danger Point",      lat:-34.62, lon:19.35,  country:"South Africa",founded:1895, notes:"Site of the 1852 HMS Birkenhead disaster."},
+  {n:"Ras Hafun",         lat:10.43,  lon:51.41,  country:"Somalia",     founded:1930, notes:"Marks Africa's and the African continent's most easterly point."},
   // Indian Ocean / Middle East
-  {n:"Ras al Hadd",        lat:22.53, lon:59.80},
-  {n:"Dondra Head",        lat:5.92,  lon:80.59},
-  {n:"Minicoy Island",     lat:8.28,  lon:73.05},
+  {n:"Ras al Hadd",       lat:22.53,  lon:59.80,  country:"Oman",        founded:1909, notes:"Marks Oman's easternmost point; entrance to the Gulf of Oman."},
+  {n:"Dondra Head",       lat:5.92,   lon:80.59,  country:"Sri Lanka",   founded:1889, notes:"Southernmost point of Sri Lanka; tallest lighthouse in Asia at 49m."},
+  {n:"Minicoy Island",    lat:8.28,   lon:73.05,  country:"India",       founded:1885, notes:"Marks the Nine Degree Channel; critical Indian Ocean shipping lane."},
 ];
 
 let showLighthouses = true;
@@ -3111,7 +3167,27 @@ function _schedAnalytics() {
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
+
+// ── Overlay button greying based on zoom ─────────────────────
+function updateOverlayButtonStates() {
+  if (!MAP || typeof MAP.currentZoom === 'undefined') return;
+  const z = MAP.currentZoom;
+  function _setBtn(id, visible, tip) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    const span = btn.querySelector('span');
+    if (span) {
+      span.style.color     = visible ? '' : 'rgba(180,210,225,0.32)';
+      span.style.fontStyle = visible ? '' : 'italic';
+    }
+    btn.title = visible ? '' : tip;
+  }
+  _setBtn('ov-ports',       z >= 3, 'Zoom in to see ports (zoom 3+)');
+  _setBtn('ov-lighthouses', z >= 7, 'Zoom in to see lighthouses (zoom 7+)');
+}
+
 window.addEventListener('DOMContentLoaded', () => {
+  updateOverlayButtonStates();
   MAP.init();
   MAP.setView(20, 10, 3);
   renderTypeFilter();
