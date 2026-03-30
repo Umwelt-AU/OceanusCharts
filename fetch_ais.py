@@ -48,6 +48,10 @@ DATA_DIR         = Path("data")
 OUT_VESSELS      = DATA_DIR / "vessels.json"
 OUT_ALERTS       = DATA_DIR / "alerts.json"
 OUT_META         = DATA_DIR / "vessels_meta.json"   # persistent, cumulative
+OUT_TRACKS       = DATA_DIR / "tracks.json"          # historical positions, keyed by MMSI
+
+TRACK_DAYS       = 7        # how many days of history to retain
+MOVE_THRESHOLD   = 0.005    # ~500 m — skip fix if vessel hasn't moved this far (degrees)
 
 vessels: dict = {}
 
@@ -575,6 +579,58 @@ def fetch_alerts():
     return unique
 
 
+# ── TRACK HISTORY ─────────────────────────────────────────────────────────────
+def update_tracks(vessels: dict) -> None:
+    """
+    Append new positions to tracks.json, storing only [ts, lat, lon] per fix.
+    Skips fixes where the vessel hasn't moved beyond MOVE_THRESHOLD degrees.
+    Prunes fixes older than TRACK_DAYS on every write.
+
+    Format: { "mmsi": [[ts, lat, lon], ...], ... }
+    """
+    # Load existing tracks
+    tracks: dict = {}
+    if OUT_TRACKS.exists():
+        try:
+            tracks = json.loads(OUT_TRACKS.read_text())
+            print(f"[TRACKS] Loaded {len(tracks)} tracked vessels")
+        except Exception:
+            pass
+
+    cutoff = time.time() - TRACK_DAYS * 86400
+    new_fixes = 0
+
+    for mmsi, v in vessels.items():
+        lat = v.get("lat")
+        lon = v.get("lon")
+        ts  = v.get("ts")
+        if lat is None or lon is None or not ts:
+            continue
+
+        history = tracks.get(mmsi, [])
+
+        # Prune old fixes
+        history = [f for f in history if f[0] >= cutoff]
+
+        # Skip if vessel hasn't moved enough since last fix
+        if history:
+            last = history[-1]
+            if abs(lat - last[1]) < MOVE_THRESHOLD and abs(lon - last[2]) < MOVE_THRESHOLD:
+                tracks[mmsi] = history
+                continue
+
+        history.append([ts, round(lat, 5), round(lon, 5)])
+        tracks[mmsi] = history
+        new_fixes += 1
+
+    # Remove MMSIs with no remaining fixes
+    tracks = {k: v for k, v in tracks.items() if v}
+
+    OUT_TRACKS.write_text(json.dumps(tracks, separators=(",", ":")))
+    print(f"[TRACKS] +{new_fixes} new fixes, {len(tracks)} vessels, "
+          f"{sum(len(v) for v in tracks.values())} total fixes → {OUT_TRACKS}")
+
+
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 async def main():
     DATA_DIR.mkdir(exist_ok=True)
@@ -605,7 +661,10 @@ async def main():
     OUT_VESSELS.write_text(json.dumps(out, separators=(",", ":")))
     print(f"[AIS] Wrote {len(merged_vessels)} vessels → {OUT_VESSELS}")
 
-    # 5. Fetch and write alerts
+    # 5. Update position history
+    update_tracks(vessels)
+
+    # 6. Fetch and write alerts
     print("[ALERTS] Fetching NGA MSI…")
     try:
         alerts = fetch_alerts()

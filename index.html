@@ -194,34 +194,58 @@ body.panel-hidden #zoom-ctrl{left:30px}
 }
 .zb:hover{background:rgba(0,212,255,.15)}
 
-/* ==== TIME BAR ==== */
+/* ==== TIME SLIDER BAR ==== */
 #tbar{
-  position:fixed;bottom:40px;left:0;right:0;height:72px;z-index:500;
-  background:rgba(4,8,18,.97);border-top:1px solid rgba(0,180,220,.2);
-  backdrop-filter:blur(14px);
-  display:flex;flex-direction:column;padding:7px 16px 9px;gap:5px
+  position:fixed;bottom:0;left:0;right:420px;z-index:490;
+  background:rgba(4,8,18,.97);border-top:1px solid rgba(0,180,220,.22);
+  backdrop-filter:blur(16px);
+  display:none;flex-direction:column;padding:10px 16px 12px;gap:6px;
+  transition:transform .25s cubic-bezier(.4,0,.2,1)
 }
-.tt{display:flex;align-items:center;gap:9px}
-.tll{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.26em;text-transform:uppercase;color:#00d4ff;flex-shrink:0}
-.tbs{display:flex;gap:3px}
-.tbtn{padding:2px 7px;font-family:'DM Mono',monospace;font-size:8px;border-radius:4px;border:1px solid rgba(0,180,220,.22);background:rgba(255,255,255,.022);color:rgba(180,210,225,.5);cursor:pointer}
-.tbtn.on{background:rgba(0,212,255,.1);border-color:rgba(0,210,255,.5);color:#00d4ff}
-.tc{font-family:'DM Mono',monospace;font-size:10px;white-space:nowrap}
-.tnow{color:#00e5a0}.thist{color:#f0a500}.tfore{color:#9b5de5}
-.ttr{position:relative;height:22px;display:flex;align-items:center}
-.tbg{position:absolute;left:0;right:0;height:5px;border-radius:3px;pointer-events:none;background:linear-gradient(90deg,rgba(240,165,0,.25) 0%,rgba(240,165,0,.25) 49.5%,rgba(0,229,160,.85) 49.5%,rgba(0,229,160,.85) 50.5%,rgba(155,93,229,.25) 50.5%,rgba(155,93,229,.25) 100%)}
-.tnl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:2px;height:14px;background:#00e5a0;box-shadow:0 0 5px #00e5a0;pointer-events:none;z-index:2}
-.ttks{position:absolute;inset:0;pointer-events:none;overflow:visible}
-.tk{position:absolute;top:0;width:1px;height:5px;background:rgba(0,212,255,.18)}
-.tkl{position:absolute;top:11px;font-family:'DM Mono',monospace;font-size:6.5px;color:rgba(180,210,225,.45);transform:translateX(-50%);white-space:nowrap}
-#trange{position:relative;z-index:3;width:100%;appearance:none;height:5px;background:transparent;outline:none;cursor:pointer}
-#trange::-webkit-slider-thumb{appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2.5px solid #00d4ff;cursor:pointer;box-shadow:0 0 10px rgba(0,212,255,.65)}
+#tbar.open{ display:flex }
+/* Push map up when slider is open */
+#map.tbar-open{ bottom:72px }
 
-#tks{flex:1;overflow:hidden;height:100%;display:flex;align-items:center;cursor:default}
-#tki{display:flex;gap:40px;white-space:nowrap;will-change:transform}
-.tke{font-family:'DM Mono',monospace;font-size:10px;color:rgba(180,210,225,.5);display:flex;align-items:center;gap:6px;white-space:nowrap;transition:color .15s}
-.tke:hover{color:rgba(180,210,225,.85)}
-.et{padding:1px 5px;border-radius:3px;font-size:7.5px;letter-spacing:.07em}
+/* Top row: label + timestamp + play + close */
+#tbar-top{display:flex;align-items:center;gap:10px}
+#tbar-lbl{font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:.3em;text-transform:uppercase;color:#00d4ff;flex-shrink:0}
+#tbar-ts{font-family:'DM Mono',monospace;font-size:11px;color:#fff;flex:1;text-align:center;letter-spacing:.05em}
+#tbar-live{padding:2px 9px;font-family:'DM Mono',monospace;font-size:8px;border-radius:4px;
+  border:1px solid rgba(0,229,160,.4);background:rgba(0,229,160,.08);
+  color:#00e5a0;cursor:pointer;flex-shrink:0}
+#tbar-live:hover{background:rgba(0,229,160,.18)}
+#tbar-play{width:26px;height:26px;border-radius:50%;background:rgba(0,212,255,.1);
+  border:1px solid rgba(0,212,255,.35);color:#00d4ff;font-size:12px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#tbar-play:hover{background:rgba(0,212,255,.22)}
+#tbar-close{background:none;border:none;color:rgba(180,210,225,.4);cursor:pointer;font-size:16px;flex-shrink:0;line-height:1}
+#tbar-close:hover{color:#c8dde8}
+
+/* Track row */
+#tbar-track{position:relative;height:20px;display:flex;align-items:center}
+#tbar-bg{position:absolute;left:0;right:0;height:4px;border-radius:2px;pointer-events:none;
+  background:rgba(0,212,255,.15)}
+#tbar-fill{position:absolute;left:0;height:4px;border-radius:2px;pointer-events:none;
+  background:linear-gradient(90deg,rgba(240,165,0,.5),#00d4ff);transition:width .1s linear}
+#tbar-range{position:relative;z-index:3;width:100%;appearance:none;height:4px;
+  background:transparent;outline:none;cursor:pointer}
+#tbar-range::-webkit-slider-thumb{appearance:none;width:15px;height:15px;border-radius:50%;
+  background:#fff;border:2.5px solid #00d4ff;cursor:pointer;box-shadow:0 0 8px rgba(0,212,255,.7)}
+#tbar-range::-moz-range-thumb{width:13px;height:13px;border-radius:50%;
+  background:#fff;border:2.5px solid #00d4ff;cursor:pointer;box-shadow:0 0 8px rgba(0,212,255,.7)}
+
+/* Toggle button floating over map */
+#tbar-tog{
+  position:fixed;bottom:12px;right:432px;z-index:491;
+  padding:5px 12px;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.15em;
+  background:rgba(4,8,18,.92);border:1px solid rgba(0,180,220,.3);border-radius:6px;
+  color:rgba(180,210,225,.55);cursor:pointer;transition:all .15s
+}
+#tbar-tog:hover,#tbar-tog.open{color:#00d4ff;border-color:rgba(0,212,255,.5);background:rgba(0,212,255,.06)}
+
+/* History mode dim on header live indicator */
+body.history-mode #llbl{color:#f0a500}
+body.history-mode .ld{background:#f0a500;box-shadow:0 0 7px #f0a500}
 
 /* ==== TRAIL LEGEND ==== */
 .li{display:flex;align-items:center;gap:3px}
@@ -447,6 +471,23 @@ body.panel-hidden #zoom-ctrl{left:30px}
   <button class="zb" onclick="MAP.zoom(-1)" style="font-size:24px;padding-bottom:2px">-</button>
 </div>
 
+<!-- TIME SLIDER -->
+<button id="tbar-tog" onclick="toggleTimebar()" title="Toggle history time slider">⏱ HISTORY</button>
+<div id="tbar">
+  <div id="tbar-top">
+    <span id="tbar-lbl">⏱ History</span>
+    <span id="tbar-ts">—</span>
+    <button id="tbar-play" onclick="tbarTogglePlay()" title="Play/pause">▶</button>
+    <button id="tbar-live" onclick="tbarGoLive()">● LIVE</button>
+    <button id="tbar-close" onclick="toggleTimebar()" title="Close">✕</button>
+  </div>
+  <div id="tbar-track">
+    <div id="tbar-bg"></div>
+    <div id="tbar-fill"></div>
+    <input id="tbar-range" type="range" min="0" max="1000" value="1000"
+      oninput="tbarScrub(this.value)" onchange="tbarScrub(this.value)">
+  </div>
+</div>
 
 </div>
 
@@ -1137,12 +1178,179 @@ function updateStats() {
 
 // ════════════════════════════════════════════════════════
 //  TIME SLIDER
+//  Loads data/tracks.json once, builds sorted timestamp list,
+//  and swaps liveVessels contents to show the world at any
+//  past moment. tracks.json format: { mmsi: [[ts,lat,lon],...] }
 // ════════════════════════════════════════════════════════
 
+let tracksData   = null;   // raw { mmsi: [[ts,lat,lon],...] }
+let trackTimes   = [];     // sorted unique timestamps across all vessels
+let tbarOpen     = false;
+let tbarHistMode = false;  // true = showing historical snapshot
+let tbarIdx      = 0;      // current index into trackTimes
+let tbarPlayTimer= null;
+let tbarPlaying  = false;
+const TBAR_PLAY_STEP_MS = 400; // ms between auto-advance steps
 
+// ── Load tracks.json (once)
+async function loadTracks() {
+  if (tracksData) return tracksData;
+  const isGHP = !['localhost','127.0.0.1',''].includes(location.hostname);
+  const src = isGHP ? 'data/tracks.json'
+    : (await _probePath('data/tracks.json') ? 'data/tracks.json' : null);
+  if (!src) return null;
+  try {
+    const res = await fetch(src, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) return null;
+    tracksData = await res.json();
+    // Build sorted list of all unique timestamps
+    const tsSet = new Set();
+    for (const fixes of Object.values(tracksData)) {
+      for (const [ts] of fixes) tsSet.add(ts);
+    }
+    trackTimes = [...tsSet].sort((a,b) => a - b);
+    console.log('[TRACKS] Loaded', Object.keys(tracksData).length,
+      'vessels,', trackTimes.length, 'unique timestamps');
+    return tracksData;
+  } catch(e) {
+    console.warn('[TRACKS] Load failed:', e.message);
+    return null;
+  }
+}
 
+async function _probePath(p) {
+  try { const r = await fetch(p, {method:'HEAD',signal:AbortSignal.timeout(2000)}); return r.ok; }
+  catch { return false; }
+}
 
+// ── Open/close the slider
+async function toggleTimebar() {
+  tbarOpen = !tbarOpen;
+  const bar = document.getElementById('tbar');
+  const tog = document.getElementById('tbar-tog');
+  const map = document.getElementById('map');
+  bar.classList.toggle('open', tbarOpen);
+  tog.classList.toggle('open', tbarOpen);
+  map.classList.toggle('tbar-open', tbarOpen);
+  MAP.resize ? MAP.resize() : window.dispatchEvent(new Event('resize'));
 
+  if (tbarOpen) {
+    // Load data if not yet loaded
+    const data = await loadTracks();
+    if (!data || trackTimes.length === 0) {
+      document.getElementById('tbar-ts').textContent = 'No history yet — check back after a few runs';
+      return;
+    }
+    // Default to most recent snapshot
+    tbarIdx = trackTimes.length - 1;
+    document.getElementById('tbar-range').max = trackTimes.length - 1;
+    document.getElementById('tbar-range').value = tbarIdx;
+    tbarApplySnapshot(tbarIdx);
+  } else {
+    tbarStopPlay();
+    tbarGoLive();
+  }
+}
+
+// ── Scrub: called on input/change
+function tbarScrub(val) {
+  tbarIdx = parseInt(val);
+  tbarApplySnapshot(tbarIdx);
+}
+
+// ── Apply the historical snapshot at index i into liveVessels
+function tbarApplySnapshot(i) {
+  if (!tracksData || trackTimes.length === 0) return;
+  const ts = trackTimes[i];
+  const pct = trackTimes.length > 1 ? i / (trackTimes.length - 1) * 100 : 100;
+
+  // Format timestamp
+  const d = new Date(ts * 1000);
+  const fmt = d.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+  document.getElementById('tbar-ts').textContent = fmt;
+  document.getElementById('tbar-fill').style.width = pct + '%';
+
+  // Enter history mode if not already
+  if (!tbarHistMode) {
+    tbarHistMode = true;
+    document.body.classList.add('history-mode');
+    const llbl = document.getElementById('llbl');
+    if (llbl) llbl.textContent = 'HIST';
+  }
+
+  // Build snapshot: for each MMSI, find last fix at or before ts
+  // Only replace AIS-sourced vessels — leave VF vessels untouched
+  const snapshot = new Map();
+  for (const [mmsi, fixes] of Object.entries(tracksData)) {
+    // Binary search for last fix ≤ ts
+    let lo = 0, hi = fixes.length - 1, best = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (fixes[mid][0] <= ts) { best = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    if (best < 0) continue; // vessel not yet seen at this time
+    const [fts, flat, flon] = fixes[best];
+    // Carry existing vessel metadata (name, type, etc.) if available
+    const existing = liveVessels.get(mmsi) || {};
+    snapshot.set(mmsi, {
+      ...existing,
+      mmsi,
+      MMSI:      mmsi,
+      lat:       flat,
+      lon:       flon,
+      LATITUDE:  flat,
+      LONGITUDE: flon,
+      ts:        fts,
+      _src:      'ais',
+      _hist:     true,
+    });
+  }
+
+  // Swap only history vessels — remove old hist entries, add new ones
+  for (const [mmsi, v] of liveVessels) {
+    if (v._hist || v._src === 'ais') liveVessels.delete(mmsi);
+  }
+  for (const [mmsi, v] of snapshot) liveVessels.set(mmsi, v);
+
+  _schedMap();
+}
+
+// ── Return to live mode
+function tbarGoLive() {
+  tbarStopPlay();
+  tbarHistMode = false;
+  document.body.classList.remove('history-mode');
+  const llbl = document.getElementById('llbl');
+  if (llbl) llbl.textContent = 'LIVE';
+  // Remove historical vessels and re-poll
+  for (const [mmsi, v] of liveVessels) {
+    if (v._hist) liveVessels.delete(mmsi);
+  }
+  pollAISBackend();
+  _schedMap();
+}
+
+// ── Autoplay
+function tbarTogglePlay() {
+  tbarPlaying ? tbarStopPlay() : tbarStartPlay();
+}
+function tbarStartPlay() {
+  if (!tracksData || trackTimes.length === 0) return;
+  tbarPlaying = true;
+  document.getElementById('tbar-play').textContent = '⏸';
+  tbarPlayTimer = setInterval(() => {
+    tbarIdx = (tbarIdx + 1) % trackTimes.length;
+    document.getElementById('tbar-range').value = tbarIdx;
+    tbarApplySnapshot(tbarIdx);
+  }, TBAR_PLAY_STEP_MS);
+}
+function tbarStopPlay() {
+  tbarPlaying = false;
+  clearInterval(tbarPlayTimer);
+  const btn = document.getElementById('tbar-play');
+  if (btn) btn.textContent = '▶';
+}
 
 // ═══════════════════════════════════════════════
 //  DATA
